@@ -1,0 +1,55 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>14.0</LangVersion>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
+    <Platform>AnyCPU</Platform>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DebugType>portable</DebugType>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <IsPackable>true</IsPackable>
+    <IsPackable Condition="$(MSBuildProjectName.EndsWith('.Tests'))">false</IsPackable>
+
+    <!-- Release packaging supplies Version and PackageVersion from GitVersion. -->
+    <Version Condition="'$(Version)' == ''">0.0.0</Version>
+    <Authors>Cédric L. Charlier</Authors>
+    <Owners>Seddryck</Owners>
+    <Company>nbiguity</Company>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://seddryck.github.io/Expressif.LanguageServer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Seddryck/Expressif.LanguageServer</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <RequireLicenseAcceptance>false</RequireLicenseAcceptance>
+    <PackageIcon>icon\Expressif.LanguageServer-icon-128.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <SymbolPackageFormat Condition="'$(DebugType)' != 'embedded'">snupkg</SymbolPackageFormat>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNet.ReproducibleBuilds" Version="2.0.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)assets\Expressif.LanguageServer-icon-128.png" Pack="true" PackagePath="icon\" Link="Expressif.LanguageServer-icon-128.png" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Link="README.md" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(IsPackable)' == 'true'">
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)' == 'Debug|net10.0|AnyCPU'">
+    <WarningLevel>5</WarningLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)' == 'Release|net10.0|AnyCPU'">
+    <WarningLevel>5</WarningLevel>
+  </PropertyGroup>
+</Project>

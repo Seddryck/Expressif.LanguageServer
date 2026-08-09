@@ -1,0 +1,131 @@
+version: build.{build}
+image: Visual Studio 2022
+
+skip_branch_with_pr: true
+skip_tags: true
+skip_commits:
+  files:
+    - .github/
+    - docs/
+    - assets/
+    - README.md
+    - LICENSE
+    - CODE_OF_CONDUCT.md
+    - CONTRIBUTING.md
+    - SECURITY.md
+
+environment:
+  github_access_token:
+    secure: gt...
+  docker_access_token:
+    secure: ...
+
+init:
+- cmd: git config --global core.autocrlf true
+- cmd: setx IGNORE_NORMALISATION_GIT_HEAD_MOVE 1
+- cmd: setx DOTNET_NO_WORKLOAD_UPDATE_NOTIFICATION 1
+- cmd: setx DOTNET_CLI_TELEMETRY_OPTOUT 1
+- cmd: setx DOTNET_NOLOGO 1
+
+install:
+- cmd: dotnet tool install --global GitVersion.Tool
+- cmd: RefreshEnv.cmd
+- cmd: dotnet tool restore
+
+before_build:
+- pwsh: Write-Host "Target branch is '$($env:APPVEYOR_REPO_BRANCH)'"
+- cmd: dotnet-gitversion /output buildserver /verbosity Minimal
+- pwsh: Write-Host "Building Expressif.LanguageServer version $($env:GitVersion_SemVer)"
+- pwsh: |
+    . "$env:APPVEYOR_BUILD_FOLDER\github.ps1"
+    if (($env:APPVEYOR_REPO_BRANCH -eq "main") -and ($null -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)) {
+      $context = [PSCustomObject] @{
+        Id = $env:APPVEYOR_REPO_COMMIT
+        Owner = ($env:APPVEYOR_REPO_NAME -Split '/')[0]
+        Repository = ($env:APPVEYOR_REPO_NAME -Split '/')[1]
+        SecretToken = $env:github_access_token
+      }
+      foreach ($id in ($context | Get-Commit-Associated-Pull-Requests)) {
+        $context.Id = $id
+        $context | Set-Pull-Request-Expected-Labels -Config '.github\conventional_commits_labels.json'
+      }
+    } else {
+      Write-Host 'Not a merge on main built on AppVeyor. Skipping conventional commit label mapping.'
+    }
+
+build_script:
+- dotnet build Expressif.LanguageServer.sln -p:Version="%GitVersion_SemVer%" -c Release --nologo
+
+test_script:
+- pwsh: |
+    $ErrorActionPreference = "Stop"
+    dotnet test src/Expressif.LanguageServer.Core.Tests -c Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:Include="[Expressif.LanguageServer.Core]*" /p:Threshold=80 /p:ThresholdType=line /p:CoverletOutput=../../.coverage/coverage.Expressif.LanguageServer.Core.xml --test-adapter-path:. --logger:Appveyor --no-build --nologo
+    if ($LASTEXITCODE -ne 0) { throw "Core tests failed." }
+
+    dotnet test src/Expressif.LanguageServer.Cli.Tests -c Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:Include="[Expressif.LanguageServer.Cli]*" /p:Threshold=10 /p:ThresholdType=line /p:CoverletOutput=../../.coverage/coverage.Expressif.LanguageServer.Cli.xml --test-adapter-path:. --logger:Appveyor --no-build --nologo
+    if ($LASTEXITCODE -ne 0) { throw "CLI tests failed." }
+
+- pwsh: |
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest -Uri https://uploader.codecov.io/latest/windows/codecov.exe -Outfile codecov.exe
+    .\codecov.exe --dir "./.coverage/"
+
+after_test:
+- pwsh: |
+    if (($env:APPVEYOR_REPO_BRANCH -eq "main") -and ($null -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)) {
+      .\package.ps1
+    } else {
+      dotnet pack src/Expressif.LanguageServer.Core -p:Version="$env:GitVersion_SemVer" -c Release --include-symbols --no-build --nologo
+      dotnet pack src/Expressif.LanguageServer.Cli -p:Version="$env:GitVersion_SemVer" -c Release --include-symbols --no-build --nologo
+    }
+
+- pwsh: |
+    if (($env:APPVEYOR_REPO_BRANCH -eq "main") -and ($null -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)) {
+      Write-Host "Logging into Docker Hub ..."
+      docker login -u seddryck -p $env:docker_access_token
+
+      Write-Host "Building Docker image ..."
+      docker build -t seddryck/expressif.LanguageServer:$env:GitVersion_SemVer .
+      docker tag seddryck/expressif.LanguageServer:$env:GitVersion_SemVer seddryck/expressif.LanguageServer:latest
+
+      docker push seddryck/expressif.LanguageServer:$env:GitVersion_SemVer
+      docker push seddryck/expressif.LanguageServer:latest
+    }
+
+artifacts:
+- path: '**\*.nupkg'
+- path: '**\*.snupkg'
+- path: '**\*.zip'
+
+deploy:
+- provider: NuGet
+  api_key:
+    secure: 3EEYl8XRqcYYe/pDY/tQu+zT8kTsgHNTJE3tzgvH1L3lG77dBE0YESj2h0WegT7G
+  skip_symbols: false
+  artifact: /.*(\.|\.s)nupkg/
+  on:
+    branch: main
+
+on_success:
+- pwsh: |
+    . "$env:APPVEYOR_BUILD_FOLDER\github.ps1"
+    if (($env:APPVEYOR_REPO_BRANCH -eq "main") -and ($null -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)) {
+      if ($env:GitVersion_Patch -eq '0' -or $env:GitVersion_Patch -eq 0) {
+        $context = [PSCustomObject] @{
+          Owner = ($env:APPVEYOR_REPO_NAME -Split '/')[0]
+          Repository = ($env:APPVEYOR_REPO_NAME -Split '/')[1]
+          SecretToken = $env:github_access_token
+        }
+
+        if (-not ($context | Check-Release-Published -Tag "v$($env:GitVersion_SemVer)")) {
+          $context | Publish-Release -Tag "v$($env:GitVersion_SemVer)" -Name "$(($env:APPVEYOR_REPO_NAME -Split '/')[1]) $($env:GitVersion_SemVer)" -ReleaseNotes -DiscussionCategory 'Announcements'
+          Start-Sleep -Seconds 5
+        }
+
+        $context | Upload-Release-Assets -Tag "v$($env:GitVersion_SemVer)" -Path "./.publish/" -Extensions @("zip")
+      } else {
+        Write-Host "No release published when the patch component is not zero."
+      }
+    } else {
+      Write-Host "No release published when not building main."
+    }

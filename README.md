@@ -15,15 +15,14 @@ Transform your structured YAML, JSON, XML, CSV or FrontMatter data into beautifu
 **Social media:** [![website](https://img.shields.io/badge/website-seddryck.github.io/Expressif.LanguageServer-fe762d.svg)](https://seddryck.github.io/Expressif.LanguageServer)
 [![twitter badge](https://img.shields.io/badge/twitter%20Expressif.LanguageServer-@Seddryck-blue.svg?style=flat&logo=twitter)](https://twitter.com/Seddryck)
 
-**Releases:** [![GitHub releases](https://img.shields.io/github/v/release/seddryck/expressif.LanguageServer?label=GitHub%20releases)](https://github.com/seddryck/expressif.LanguageServer/releases/latest) 
-[![nuget](https://img.shields.io/nuget/v/Expressif.LanguageServer-cli.svg)](https://www.nuget.org/packages/Expressif.LanguageServer-cli/) [![Docker Image Version](https://img.shields.io/docker/v/seddryck/expressif.LanguageServer?label=docker%20hub&color=0db7ed)](https://hub.docker.com/repository/docker/seddryck/expressif.LanguageServer/) [![GitHub Release Date](https://img.shields.io/github/release-date/seddryck/Expressif.LanguageServer.svg)](https://github.com/Seddryck/Expressif.LanguageServer/releases/latest) [![licence badge](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://github.com/Seddryck/Expressif.LanguageServer/blob/master/LICENSE) 
+**Releases:** [![GitHub releases](https://img.shields.io/github/v/release/seddryck/expressif.LanguageServer?label=GitHub%20releases)](https://github.com/seddryck/expressif.LanguageServer/releases/latest)
+[![GitHub Release Date](https://img.shields.io/github/release-date/seddryck/Expressif.LanguageServer.svg)](https://github.com/Seddryck/Expressif.LanguageServer/releases/latest) [![licence badge](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://github.com/Seddryck/Expressif.LanguageServer/blob/master/LICENSE)
 
 **Dev. activity:** [![GitHub last commit](https://img.shields.io/github/last-commit/Seddryck/Expressif.LanguageServer.svg)](https://github.com/Seddryck/Expressif.LanguageServer/commits)
 ![Still maintained](https://img.shields.io/maintenance/yes/2025.svg)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/y/Seddryck/Expressif.LanguageServer)
 
-**Continuous integration builds:** [![Build status](https://ci.appveyor.com/api/projects/status/na3dklqjsuv1lbfv?svg=true)](https://ci.appveyor.com/project/Seddryck/Expressif.LanguageServer/)
-[![Tests](https://img.shields.io/appveyor/tests/seddryck/Expressif.LanguageServer.svg)](https://ci.appveyor.com/project/Seddryck/Expressif.LanguageServer/build/tests)
+**Continuous integration builds:** [![Build](https://github.com/Seddryck/Expressif.LanguageServer/actions/workflows/build.yml/badge.svg)](https://github.com/Seddryck/Expressif.LanguageServer/actions/workflows/build.yml)
 [![CodeFactor](https://www.codefactor.io/repository/github/seddryck/Expressif.LanguageServer/badge)](https://www.codefactor.io/repository/github/seddryck/Expressif.LanguageServer)
 [![codecov](https://codecov.io/github/Seddryck/Expressif.LanguageServer/branch/main/graph/badge.svg?token=YRA8IRIJYV)](https://codecov.io/github/Seddryck/Expressif.LanguageServer)
 <!-- [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FSeddryck%2FExpressif.LanguageServer.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FSeddryck%2FExpressif.LanguageServer?ref=badge_shield) -->
@@ -33,104 +32,6 @@ Transform your structured YAML, JSON, XML, CSV or FrontMatter data into beautifu
 [![Top language](https://img.shields.io/github/languages/top/seddryck/Expressif.LanguageServer.svg)](https://github.com/Seddryck/Expressif.LanguageServer/search?l=C%23)
 
 ## Installing
-
-### Install as a .NET global tool
-
-A .NET global tool is a console application that you can install and run from any directory on your machine. Here’s a guide on how to perform a global installation of a .NET tool:
-
-#### Prerequisites
-Before installing a .NET global tool, you must have the .NET SDK installed on your machine. You can check if it's installed by running the following command in your terminal or Command Prompt:
-
-```bash
-dotnet --version
-```
-If .NET is not installed, download it from [Microsoft's official website](https://dotnet.microsoft.com/download/dotnet).
-
-#### Install a .NET Global Tool
-To install a .NET global tool, you use the dotnet tool install command. This command installs a tool for all users globally on your system.
-
-```bash
-dotnet tool install -g Expressif.LanguageServer-cli
-```
-
-`-g`: This flag tells the dotnet command to install the tool globally.
-
-#### Verify Installation
-
-After installing the tool, you can verify that it's available globally by running it from any directory.
-
-```bash
-expressif.LanguageServer --version
-```
-
-This command will display the installed tool’s version if the installation was successful.
-
-#### Update a .NET Global Tool
-
-To update a globally installed .NET tool, use the dotnet tool update command:
-
-```bash
-dotnet tool update -g Expressif.LanguageServer-cli
-```
-
-### Install from Docker
-
-#### Prerequisites
-
-**Docker Installed**: Ensure that Docker is installed and running on your system. You can download Docker from Docker's official site.
-
-#### Pulling the Docker Image
-
-A pre-built Docker image is available on Docker Hub, you can pull it using the following command:
-
-```powershell
-docker pull seddryck/expressif.LanguageServer:latest
-```
-
-#### Running Expressif.LanguageServer from Docker
-
-Once you have the Docker image, you can run Expressif.LanguageServer using Docker in PowerShell.
-
-###### Basic Command
-
-<sub>CMD:</sub>
-```CMD
-docker run --rm -v %cd%:/files expressif.LanguageServer -t <template-file> -s <source-file> -o <output-file>
-```
-
-<sub>PowerShell:</sub>
-```powershell
-docker run --rm -v ${pwd}:/files expressif.LanguageServer -t <template-file> -s <source-file> -o <output-file>
-```
-
-- `--rm`: Automatically removes the container after it finishes executing.
-- `-v ${pwd}:/files`: Mounts the current directory (`${pwd}` in PowerShell or Bash, `%cd%` in CMD) to /files inside the Docker container, so Expressif.LanguageServer can access your local files.
-- `-t <template-file>`: Specifies the path to the template file inside the /files directory.
-- `-s <source-file>`: Specifies the path to the source file (YAML, JSON, or XML).
-- `-o <output-file>`: Specifies the path to the output file that Expressif.LanguageServer will generate. If omitted, it will display the result on the host console.
-
-##### Example Workflow:
-
-1. Prepare the Template and Source Files:
-
-  - Make sure your template and source files are correctly formatted and saved in the correct directory. For example:
-    - `./templates/template-01.hbs`
-    - `./data/data.json`
-2. Run Expressif.LanguageServer: Use the following command to generate templated output:
-
-```powershell
-docker run --rm -v ${pwd}:/files expressif.LanguageServer -t /files/templates/template-01.hbs -s /files/data/data.json -o /files/output/output.txt
-```
-
-3. Access the Output: The output file will be generated in ./output/output.txt on your local machine after the Docker container finishes execution.
-
-#### Updating Expressif.LanguageServer
-
-To update to the latest version of Expressif.LanguageServer, either pull the new Docker image
-
-```powershell
-docker pull seddryck/expressif.LanguageServer:latest
-```
 
 ### Install from GitHub Releases
 
@@ -167,7 +68,7 @@ To run the executable from any location in the command line, you need to add its
 ### Step 4: Verify Installation
 
 1. Open **Command Prompt** (CMD).
-2. Type the name of the executable (e.g., `expressif.LanguageServer.exe`) and hit Enter.
+2. Type `Expressif-LanguageServer.exe` and hit Enter.
 3. If everything is set up correctly, the program should run.
 
 ## QuickStart

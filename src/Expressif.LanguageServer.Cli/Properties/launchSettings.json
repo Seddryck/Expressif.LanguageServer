@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Expressif.LanguageServer.Console": {
-      "commandName": "Project",
-      "commandLineArgs": "--Template template.scriban --Source source.yaml"
-    }
-  }
-}

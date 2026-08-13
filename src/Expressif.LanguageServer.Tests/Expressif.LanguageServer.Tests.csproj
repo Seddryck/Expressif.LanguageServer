@@ -20,6 +20,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Expressif.LanguageServer.Core\Expressif.LanguageServer.Core.csproj" />
+    <ProjectReference Include="..\Expressif.LanguageServer\Expressif.LanguageServer.csproj" />
   </ItemGroup>
 </Project>

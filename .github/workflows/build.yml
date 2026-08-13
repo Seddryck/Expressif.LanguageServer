@@ -1,0 +1,109 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-publish:
+    name: .NET 10 / win-x64
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install GitVersion
+        shell: pwsh
+        run: dotnet tool install --global GitVersion.Tool
+
+      - name: Calculate version
+        id: version
+        shell: pwsh
+        run: |
+          $version = dotnet-gitversion /showvariable SemVer
+          if (-not $version) { throw 'GitVersion did not return a semantic version.' }
+          "semver=$version" >> $env:GITHUB_OUTPUT
+          "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Restore
+        run: dotnet restore Expressif.LanguageServer.sln -r win-x64
+
+      - name: Build
+        run: dotnet build src/Expressif.LanguageServer/Expressif.LanguageServer.csproj --configuration Release --framework net10.0 --runtime win-x64 --no-restore --nologo -p:Version=${{ steps.version.outputs.semver }}
+
+      - name: Test core services
+        run: dotnet test src/Expressif.LanguageServer.Core.Tests/Expressif.LanguageServer.Core.Tests.csproj --configuration Release --framework net10.0 --runtime win-x64 --no-restore --nologo
+
+      - name: Publish self-contained application
+        run: dotnet publish src/Expressif.LanguageServer/Expressif.LanguageServer.csproj --configuration Release --framework net10.0 --runtime win-x64 --self-contained true --no-restore --nologo -p:Version=${{ steps.version.outputs.semver }} --output artifacts/publish
+
+      - name: Create release archive
+        shell: pwsh
+        run: |
+          $archive = "artifacts/Expressif-LanguageServer-$env:VERSION-net10.0-win-x64.zip"
+          Compress-Archive -Path 'artifacts/publish/*' -DestinationPath $archive
+
+      - name: Check release eligibility
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: release
+        shell: pwsh
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          $subject = ($env:COMMIT_MESSAGE -split "`r?`n", 2)[0]
+          $eligible = $subject -match '^(build|feat|fix|perf)(\([^)]+\))?!?:\s.+'
+          "eligible=$($eligible.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+      - name: Upload release candidate
+        if: steps.release.outputs.eligible == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          path: artifacts/Expressif-LanguageServer-${{ steps.version.outputs.semver }}-net10.0-win-x64.zip
+          if-no-files-found: error
+          retention-days: 1
+
+    outputs:
+      version: ${{ steps.version.outputs.semver }}
+      release-eligible: ${{ steps.release.outputs.eligible }}
+
+  release:
+    name: GitHub Release
+    needs: build-test-publish
+    if: needs.build-test-publish.outputs.release-eligible == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          path: artifacts
+
+      - name: Tag and publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build-test-publish.outputs.version }}
+        run: |
+          $tag = "v$env:VERSION"
+          $archive = "artifacts/Expressif-LanguageServer-$env:VERSION-net10.0-win-x64.zip"
+          gh release create $tag $archive --repo '${{ github.repository }}' --target '${{ github.sha }}' --title $tag --generate-notes

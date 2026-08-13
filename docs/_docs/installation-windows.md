@@ -11,7 +11,7 @@ tags: [quick-start, installation]
 Example:
 
    ```powershell
-   https://github.com/Seddryck/Expressif.LanguageServer/releases/download/v0.13.0/Expressif.LanguageServer-0.13.0-net7.0-win-x64.zip
+   https://github.com/Seddryck/Expressif.LanguageServer/releases/latest/
    ```
 
 ## Step 2: Extract the ZIP File
@@ -35,5 +35,5 @@ To run the executable from any location in the command line, you need to add its
 ## Step 4: Verify Installation
 
 1. Open **Command Prompt** (CMD).
-2. Type the name of the executable (e.g., `expressif.LanguageServer.exe`) and hit Enter.
+2. Type `Expressif-LanguageServer.exe` and hit Enter.
 3. If everything is set up correctly, the program should run.

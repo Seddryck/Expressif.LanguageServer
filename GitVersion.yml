@@ -13,7 +13,7 @@ branches:
   main:
     regex: ^main$
     is-main-branch: true
-    increment: Patch
+    increment: None
     mode: ContinuousDeployment
   feature:
     label: beta.{BranchName}

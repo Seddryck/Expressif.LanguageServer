@@ -249,8 +249,6 @@ Use `ci` for CI configuration and scripts, including GitHub Actions workflows an
 
 Use `build` for the build system and external project/build dependencies, including NuGet and npm dependencies.
 
-Only `build`, `feat`, `fix`, and `perf` commits should normally increment the GitVersion-calculated release version. By default, add `+semver: skip` to the commit message body when using `chore`, `refactor`, `revert`, `ci`, or `style` so those commits do not trigger a release version increment.
-
 ---
 
 ## Dependencies

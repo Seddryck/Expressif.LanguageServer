@@ -18,12 +18,23 @@ public sealed class DocumentStore(ISyntaxService syntaxService) : IDocumentStore
     public DocumentSnapshot Change(Uri uri, string text, int? version)
     {
         ArgumentNullException.ThrowIfNull(uri);
-        if (!documents.ContainsKey(uri))
-            throw new InvalidOperationException($"Document '{uri}' is not open.");
-
         var document = CreateSnapshot(uri, text, version);
-        documents[uri] = document;
-        return document;
+
+        while (documents.TryGetValue(uri, out var current))
+        {
+            if (current.Version is int currentVersion &&
+                version is int incomingVersion &&
+                incomingVersion <= currentVersion)
+            {
+                throw new InvalidOperationException(
+                    $"Document '{uri}' version {incomingVersion} must be greater than version {currentVersion}.");
+            }
+
+            if (documents.TryUpdate(uri, document, current))
+                return document;
+        }
+
+        throw new InvalidOperationException($"Document '{uri}' is not open.");
     }
 
     public bool Close(Uri uri) => documents.TryRemove(uri, out _);

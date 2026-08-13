@@ -22,6 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
@@ -41,6 +42,13 @@ jobs:
           "semver=$version" >> $env:GITHUB_OUTPUT
           "VERSION=$version" >> $env:GITHUB_ENV
 
+          $releaseEligible = $false
+          if ('${{ github.event_name }}' -eq 'push' -and '${{ github.ref }}' -eq 'refs/heads/main') {
+            git rev-parse --verify --quiet "refs/tags/v$version"
+            $releaseEligible = $LASTEXITCODE -ne 0
+          }
+          "release-eligible=$($releaseEligible.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
       - name: Restore
         run: dotnet restore Expressif.LanguageServer.sln -r win-x64
 
@@ -59,19 +67,8 @@ jobs:
           $archive = "artifacts/Expressif-LanguageServer-$env:VERSION-net10.0-win-x64.zip"
           Compress-Archive -Path 'artifacts/publish/*' -DestinationPath $archive
 
-      - name: Check release eligibility
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        id: release
-        shell: pwsh
-        env:
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: |
-          $subject = ($env:COMMIT_MESSAGE -split "`r?`n", 2)[0]
-          $eligible = $subject -match '^(build|feat|fix|perf)(\([^)]+\))?!?:\s.+'
-          "eligible=$($eligible.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-
       - name: Upload release candidate
-        if: steps.release.outputs.eligible == 'true'
+        if: steps.version.outputs.release-eligible == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: release-candidate
@@ -81,7 +78,7 @@ jobs:
 
     outputs:
       version: ${{ steps.version.outputs.semver }}
-      release-eligible: ${{ steps.release.outputs.eligible }}
+      release-eligible: ${{ steps.version.outputs.release-eligible }}
 
   release:
     name: GitHub Release

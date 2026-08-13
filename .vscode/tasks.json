@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build Expressif VS Code extension",
+      "type": "shell",
+      "command": "npm run compile && node ./scripts/publish-server.mjs",
+      "options": {
+        "cwd": "${workspaceFolder}/vscode-extension"
+      },
+      "problemMatcher": "$tsc"
+    }
+  ]
+}

@@ -22,6 +22,18 @@ public sealed class SyntaxServiceTests
     }
 
     [Test]
+    public void Parse_UnknownFunctionName_ReturnsNoSyntaxErrors()
+    {
+        var result = service.Parse("this-function-does-not-exist(1)");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsValid, Is.True);
+            Assert.That(result.Errors, Is.Empty);
+        });
+    }
+
+    [Test]
     public void Parse_InvalidExpression_ReturnsSyntaxErrors()
     {
         var result = service.Parse("upper(");

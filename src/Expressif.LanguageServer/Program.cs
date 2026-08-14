@@ -1,5 +1,7 @@
 using Expressif.LanguageServer.Handlers;
+using Expressif.LanguageServer.Core.Completion;
 using Expressif.LanguageServer.Core.Documents;
+using Expressif.LanguageServer.Core.Functions;
 using Expressif.LanguageServer.Core.Syntax;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -22,8 +24,11 @@ public static class Program
             {
                 services.AddSingleton<ISyntaxService, SyntaxService>();
                 services.AddSingleton<IDocumentStore, DocumentStore>();
+                services.AddSingleton<IFunctionCatalog, ExpressifFunctionCatalog>();
+                services.AddSingleton<ICompletionService, CompletionService>();
             })
-            .WithHandler<TextDocumentSyncHandler>());
+            .WithHandler<TextDocumentSyncHandler>()
+            .WithHandler<CompletionHandler>());
 
         await server.WaitForExit;
     }

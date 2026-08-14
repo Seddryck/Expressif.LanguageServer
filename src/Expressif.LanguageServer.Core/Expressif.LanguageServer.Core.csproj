@@ -4,6 +4,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Expressif" Version="1.14.2" GeneratePathProperty="true" />
     <PackageReference Include="Expressif.Syntax" Version="0.8.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(PkgExpressif)\lib\$(TargetFramework)\Expressif.xml"
+          Link="Expressif.xml"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

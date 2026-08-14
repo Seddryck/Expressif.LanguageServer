@@ -1,0 +1,88 @@
+{
+  "name": "expressif-language-support",
+  "displayName": "Expressif Language Support",
+  "description": "Thin VS Code client for Expressif.LanguageServer.",
+  "version": "0.1.0",
+  "publisher": "seddryck",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Seddryck/Expressif.LanguageServer.git",
+    "directory": "vscode-extension"
+  },
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "Expressif",
+    "LSP"
+  ],
+  "activationEvents": [
+    "onLanguage:expressif"
+  ],
+  "main": "./dist/extension.js",
+  "files": [
+    "dist/**",
+    "server/**",
+    "language-configuration.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "expressif",
+        "aliases": [
+          "Expressif",
+          "expressif"
+        ],
+        "extensions": [
+          ".expressif"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "title": "Expressif Language Server",
+      "properties": {
+        "expressif.languageServer.path": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Optional absolute path to an Expressif.LanguageServer executable. Leave empty to use the server bundled in this extension."
+        },
+        "expressifLanguageServer.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "scope": "window",
+          "description": "Trace communication between VS Code and Expressif.LanguageServer."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./ --noEmit && esbuild ./src/extension.ts --bundle --external:vscode --platform=node --format=cjs --outfile=./dist/extension.js --sourcemap",
+    "watch": "tsc -watch -p ./",
+    "check": "tsc -p ./ --noEmit",
+    "package": "npm run compile && node ./scripts/publish-server.mjs && vsce package --out ./artifacts/expressif-language-support.vsix"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.7.2"
+  }
+}

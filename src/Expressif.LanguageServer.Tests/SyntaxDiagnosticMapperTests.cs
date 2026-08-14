@@ -32,9 +32,39 @@ public sealed class SyntaxDiagnosticMapperTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(diagnostic.Range, Is.EqualTo(new Range(1, 4, 1, 4)));
+            Assert.That(diagnostic.Range, Is.EqualTo(new Range(1, 3, 1, 4)));
             Assert.That(diagnostic.Message, Is.EqualTo("Missing )."));
         });
+    }
+
+    [Test]
+    public void Map_MultilineSpan_UsesZeroBasedLineAndCharacter()
+    {
+        const string source = "@foo |\r\n  add(,)";
+        var diagnostic = SyntaxDiagnosticMapper.Map(
+            source, new SyntaxError("ERROR", new SourceSpan(14, 1), ",", false));
+
+        Assert.That(diagnostic.Range, Is.EqualTo(new Range(1, 6, 1, 7)));
+    }
+
+    [Test]
+    public void Map_Utf8Span_UsesLspUtf16Characters()
+    {
+        const string source = "😀 | add(,)";
+        var diagnostic = SyntaxDiagnosticMapper.Map(
+            source, new SyntaxError("ERROR", new SourceSpan(11, 1), ",", false));
+
+        Assert.That(diagnostic.Range, Is.EqualTo(new Range(0, 9, 0, 10)));
+    }
+
+    [Test]
+    public void Map_ZeroLengthSpanBeforeCharacter_HighlightsWholeCodePoint()
+    {
+        const string source = "😀";
+        var diagnostic = SyntaxDiagnosticMapper.Map(
+            source, new SyntaxError("ERROR", new SourceSpan(0, 0), "", false));
+
+        Assert.That(diagnostic.Range, Is.EqualTo(new Range(0, 0, 0, 2)));
     }
 
     [Test]
@@ -44,6 +74,6 @@ public sealed class SyntaxDiagnosticMapperTests
         var diagnostic = SyntaxDiagnosticMapper.Map(
             source, new SyntaxError(")", new SourceSpan(100, 2), "", true));
 
-        Assert.That(diagnostic.Range, Is.EqualTo(new Range(0, 4, 0, 4)));
+        Assert.That(diagnostic.Range, Is.EqualTo(new Range(0, 3, 0, 4)));
     }
 }

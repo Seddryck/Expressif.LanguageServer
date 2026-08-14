@@ -44,8 +44,8 @@ jobs:
 
           $releaseEligible = $false
           if ('${{ github.event_name }}' -eq 'push' -and '${{ github.ref }}' -eq 'refs/heads/main') {
-            git rev-parse --verify --quiet "refs/tags/v$version"
-            $releaseEligible = $LASTEXITCODE -ne 0
+            $existingTag = git tag --list "v$version"
+            $releaseEligible = -not $existingTag
           }
           "release-eligible=$($releaseEligible.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 

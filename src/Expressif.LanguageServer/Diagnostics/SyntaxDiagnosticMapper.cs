@@ -40,7 +40,7 @@ internal static class SyntaxDiagnosticMapper
         while (previous > 0 && source[previous] is '\r' or '\n')
             previous = PreviousCodePoint(source, previous);
 
-        return source[previous] is '\r' or '\n' ? (start, end) : (previous, start);
+        return source[previous] is '\r' or '\n' ? (start, end) : (previous, NextCodePoint(source, previous));
     }
 
     private static int NextCodePoint(string source, int offset)

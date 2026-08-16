@@ -4,6 +4,7 @@
   "description": "Thin VS Code client for Expressif.LanguageServer.",
   "version": "0.1.0",
   "publisher": "seddryck",
+  "icon": "images/expressif-icon-128.png",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -28,6 +29,7 @@
     "dist/**",
     "server/**",
     "language-configuration.json",
+    "images/expressif-icon-128.png",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

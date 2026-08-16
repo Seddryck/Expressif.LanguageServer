@@ -76,4 +76,14 @@ public sealed class SyntaxDiagnosticMapperTests
 
         Assert.That(diagnostic.Range, Is.EqualTo(new Range(0, 3, 0, 4)));
     }
+
+    [Test]
+    public void Map_ZeroLengthSpanAfterCrLf_ExcludesTrailingLineTerminators()
+    {
+        const string source = "a\r\n";
+        var diagnostic = SyntaxDiagnosticMapper.Map(
+            source, new SyntaxError("ERROR", new SourceSpan(3, 0), "", false));
+
+        Assert.That(diagnostic.Range, Is.EqualTo(new Range(0, 0, 0, 1)));
+    }
 }

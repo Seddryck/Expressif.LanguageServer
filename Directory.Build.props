@@ -23,7 +23,7 @@
     <RepositoryUrl>https://github.com/Seddryck/Expressif.LanguageServer</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <RequireLicenseAcceptance>false</RequireLicenseAcceptance>
-    <PackageIcon>icon\Expressif.LanguageServer-icon-128.png</PackageIcon>
+    <PackageIcon>icon\expressif-icon-128.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <SymbolPackageFormat Condition="'$(DebugType)' != 'embedded'">snupkg</SymbolPackageFormat>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
@@ -37,7 +37,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsPackable)' == 'true'">
-    <None Include="$(MSBuildThisFileDirectory)assets\Expressif.LanguageServer-icon-128.png" Pack="true" PackagePath="icon\" Link="Expressif.LanguageServer-icon-128.png" />
+    <None Include="$(MSBuildThisFileDirectory)assets\expressif-icon-128.png" Pack="true" PackagePath="icon\" Link="expressif-icon-128.png" />
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Link="README.md" />
   </ItemGroup>
 

@@ -1,6 +1,6 @@
 # Expressif.LanguageServer
 
-![Logo](https://raw.githubusercontent.com/Seddryck/Expressif.LanguageServer/main/assets/expressif.LanguageServer-logo-256.png)
+![Expressif logo](https://raw.githubusercontent.com/Seddryck/Expressif.LanguageServer/main/assets/expressif-icon-256.png)
 
 Transform your structured YAML, JSON, XML, CSV or FrontMatter data into beautiful, fully-customized HTML pages or plain text in seconds with Expressif.LanguageServer. This command-line tool seamlessly generates renders from data files using your preferred templates through Scriban, Handlebars, DotLiquid, Fluid, StringTemplate or SmartFormat. Whether you're building static sites, documentation, or reporting tools, Expressif.LanguageServer makes it easy to turn raw data into polished, web-ready content.
 

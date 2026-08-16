@@ -43,6 +43,31 @@ public sealed class CompletionServiceTests
         Assert.That(result.Select(item => item.Label), Does.Contain("text-to-upper"));
     }
 
+    [TestCase("@foo |")]
+    [TestCase("@foo |>")]
+    public void GetCompletions_AdjacentToPipelineOperator_InsertsLeadingSpace(string text)
+    {
+        var result = service.GetCompletions(text, text.Length);
+
+        var suggestion = result.Single(item => item.Label == "upper");
+        Assert.Multiple(() =>
+        {
+            Assert.That(suggestion.InsertText, Is.EqualTo(" upper"));
+            Assert.That(suggestion.ReplacementStart, Is.EqualTo(text.Length));
+            Assert.That(suggestion.ReplacementLength, Is.Zero);
+        });
+    }
+
+    [TestCase("@foo | ")]
+    [TestCase("@foo |> ")]
+    public void GetCompletions_SeparatedFromPipelineOperator_DoesNotInsertLeadingSpace(string text)
+    {
+        var result = service.GetCompletions(text, text.Length);
+
+        var suggestion = result.Single(item => item.Label == "upper");
+        Assert.That(suggestion.InsertText, Is.EqualTo("upper"));
+    }
+
     [Test]
     public void GetCompletions_InsideLiteral_ReturnsNoFunctions()
     {

@@ -22,22 +22,41 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
             tokenEnd++;
 
         var prefix = text[prefixStart..cursorOffset];
-        var probeText = string.Concat(text.AsSpan(0, prefixStart), ProbeName, text.AsSpan(tokenEnd));
+        var pipelineOperator = FindPrecedingPipelineOperator(text, prefixStart);
+        var probeText = pipelineOperator?.Length == 2
+            ? string.Concat(
+                text.AsSpan(0, pipelineOperator.Value.Start + 1),
+                text.AsSpan(pipelineOperator.Value.Start + 2, prefixStart - pipelineOperator.Value.Start - 2),
+                ProbeName,
+                text.AsSpan(tokenEnd))
+            : string.Concat(text.AsSpan(0, prefixStart), ProbeName, text.AsSpan(tokenEnd));
         if (!ProbeIsFunction(probeText))
             return [];
+
+        var needsLeadingSpace = pipelineOperator is { } precedingOperator
+            && precedingOperator.Start + precedingOperator.Length == prefixStart;
+        var replacementStart = needsLeadingSpace ? cursorOffset : prefixStart;
+        var replacementLength = needsLeadingSpace ? tokenEnd - cursorOffset : tokenEnd - prefixStart;
 
         return functions.Functions
             .SelectMany(function => new[]
                 {
-                    new CompletionSuggestion(function.Name, function.Name, true, prefixStart, tokenEnd - prefixStart)
+                    CreateSuggestion(function.Name, true)
                 }
-                .Concat(function.Aliases.Select(alias => new CompletionSuggestion(
-                    alias, alias, false, prefixStart, tokenEnd - prefixStart))))
+                .Concat(function.Aliases.Select(alias => CreateSuggestion(alias, false))))
             .Where(suggestion => suggestion.Label.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             .DistinctBy(suggestion => suggestion.Label, StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(suggestion => suggestion.IsCanonical)
             .ThenBy(suggestion => suggestion.Label, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+
+        CompletionSuggestion CreateSuggestion(string functionName, bool isCanonical)
+            => new(
+                functionName,
+                needsLeadingSpace ? $" {functionName}" : functionName,
+                isCanonical,
+                replacementStart,
+                replacementLength);
     }
 
     private static bool ProbeIsFunction(string probeText)
@@ -65,4 +84,16 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
 
     private static bool IsFunctionNameCharacter(char character)
         => char.IsAsciiLetterOrDigit(character) || character is '-' or '_';
+
+    private static (int Start, int Length)? FindPrecedingPipelineOperator(string text, int position)
+    {
+        var index = position - 1;
+        while (index >= 0 && char.IsWhiteSpace(text[index]))
+            index--;
+
+        if (index > 0 && text[index - 1] == '|' && text[index] == '>')
+            return (index - 1, 2);
+
+        return index >= 0 && text[index] == '|' ? (index, 1) : null;
+    }
 }

@@ -2,6 +2,7 @@ using Expressif.LanguageServer.Handlers;
 using Expressif.LanguageServer.Core.Completion;
 using Expressif.LanguageServer.Core.Documents;
 using Expressif.LanguageServer.Core.Functions;
+using Expressif.LanguageServer.Core.Hover;
 using Expressif.LanguageServer.Core.Syntax;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -26,9 +27,11 @@ public static class Program
                 services.AddSingleton<IDocumentStore, DocumentStore>();
                 services.AddSingleton<IFunctionCatalog, ExpressifFunctionCatalog>();
                 services.AddSingleton<ICompletionService, CompletionService>();
+                services.AddSingleton<IFunctionHoverService, FunctionHoverService>();
             })
             .WithHandler<TextDocumentSyncHandler>()
-            .WithHandler<CompletionHandler>());
+            .WithHandler<CompletionHandler>()
+            .WithHandler<HoverHandler>());
 
         await server.WaitForExit;
     }

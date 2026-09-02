@@ -27,19 +27,42 @@ public sealed class FunctionSignatureHelpService(IFunctionCatalog functions) : I
 
         var parameters = metadata.Parameters
             .Select(parameter => new SignatureParameter(
-                parameter.Optional ? $"{parameter.Name}?" : parameter.Name,
+                parameter.Label,
                 parameter.Description))
             .ToArray();
         var activeArgument = GetActiveArgument(call, cursorOffset);
         int? activeParameter = parameters.Length == 0
             ? null
-            : Math.Min(activeArgument, parameters.Length - 1);
+            : GetActiveParameter(metadata.Parameters, activeArgument, call.Arguments.Count);
 
         return new FunctionSignatureHelp(
             $"{metadata.Name}({string.Join(", ", parameters.Select(parameter => parameter.Label))})",
             metadata.Description,
             parameters,
             activeParameter);
+    }
+
+    private static int GetActiveParameter(
+        IReadOnlyList<FunctionParameterMetadata> parameters,
+        int activeArgument,
+        int argumentCount)
+    {
+        var variadicIndex = parameters
+            .Select((parameter, index) => (parameter, index))
+            .Where(item => item.parameter.Variadic)
+            .Select(item => item.index)
+            .DefaultIfEmpty(-1)
+            .Single();
+        if (variadicIndex < 0 || activeArgument < variadicIndex)
+            return Math.Min(activeArgument, parameters.Count - 1);
+
+        var trailingParameterCount = parameters.Count - variadicIndex - 1;
+        var firstTrailingArgument = Math.Max(
+            variadicIndex + parameters[variadicIndex].MinimumCardinality,
+            argumentCount - trailingParameterCount);
+        return activeArgument < firstTrailingArgument
+            ? variadicIndex
+            : Math.Min(variadicIndex + 1 + activeArgument - firstTrailingArgument, parameters.Count - 1);
     }
 
     private static bool IsInsideArgumentList(FunctionCallSyntax call, int cursorOffset)

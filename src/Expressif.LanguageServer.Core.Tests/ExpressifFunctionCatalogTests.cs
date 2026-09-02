@@ -15,7 +15,7 @@ public sealed class ExpressifFunctionCatalogTests
         Assert.Multiple(() =>
         {
             Assert.That(upper.Aliases, Does.Contain("text-to-upper"));
-            Assert.That(upper.Category, Is.EqualTo("Text"));
+            Assert.That(upper.Category, Is.EqualTo("text/casing"));
             Assert.That(upper.Description, Is.Not.Empty);
         });
     }
@@ -31,6 +31,21 @@ public sealed class ExpressifFunctionCatalogTests
             Assert.That(add.Parameters, Is.Not.Empty);
             Assert.That(add.Parameters.All(parameter => !string.IsNullOrWhiteSpace(parameter.Name)), Is.True);
             Assert.That(add.Parameters.All(parameter => !string.IsNullOrWhiteSpace(parameter.Description)), Is.True);
+        });
+    }
+
+    [Test]
+    public void Functions_IncludeVariadicMetadataFromExpressifIntrospection()
+    {
+        var functions = new ExpressifFunctionCatalog().Functions;
+
+        var coalesce = functions.Single(function => function.Name == "coalesce");
+        var expressions = coalesce.Parameters.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(expressions.Variadic, Is.True);
+            Assert.That(expressions.MinimumCardinality, Is.EqualTo(2));
+            Assert.That(expressions.Description, Does.Contain("Two or more"));
         });
     }
 }

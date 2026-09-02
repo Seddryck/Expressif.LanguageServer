@@ -1,6 +1,14 @@
 namespace Expressif.LanguageServer.Core.Functions;
 
-public sealed record FunctionParameterMetadata(string Name, bool Optional, string Description);
+public sealed record FunctionParameterMetadata(
+    string Name,
+    bool Optional,
+    string Description,
+    bool Variadic = false,
+    int MinimumCardinality = 1)
+{
+    public string Label => $"{Name}{(Optional ? "?" : string.Empty)}{(Variadic ? "..." : string.Empty)}";
+}
 
 public sealed record FunctionMetadata(
     string Name,

@@ -49,6 +49,9 @@ jobs:
           }
           "release-eligible=$($releaseEligible.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
+      - name: Propagate version to VS Code extension
+        run: npm version ${{ steps.version.outputs.semver }} --prefix vscode-extension --no-git-tag-version --allow-same-version
+
       - name: Restore
         run: dotnet restore Expressif.LanguageServer.sln -r win-x64
 

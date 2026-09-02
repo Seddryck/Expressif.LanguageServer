@@ -26,8 +26,7 @@ public sealed class FunctionHoverService(IFunctionCatalog functions) : IFunction
         if (metadata is null)
             return null;
 
-        var parameters = string.Join(", ", metadata.Parameters.Select(parameter =>
-            parameter.Optional ? $"{parameter.Name}?" : parameter.Name));
+        var parameters = string.Join(", ", metadata.Parameters.Select(parameter => parameter.Label));
         return new FunctionHover(
             $"{metadata.Name}({parameters})",
             metadata.Description,

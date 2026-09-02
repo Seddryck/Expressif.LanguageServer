@@ -64,4 +64,37 @@ public sealed class SignatureHelpHandlerTests
 
         Assert.That(result, Is.Null);
     }
+
+    [Test]
+    public async Task Handle_VariadicParameter_MapsExactRenderedLabelAsync()
+    {
+        const string text = "concat(1, 2)";
+        var documents = new DocumentStore(new SyntaxService());
+        var uri = DocumentUri.FromFileSystemPath("/workspace/example.expr");
+        documents.Open(uri.ToUri(), text, 1);
+        var signatures = new Mock<IFunctionSignatureHelpService>();
+        signatures.Setup(service => service.GetSignatureHelp(
+                It.IsAny<Expressif.Syntax.RootExpressionSyntax>(), 11))
+            .Returns(new FunctionSignatureHelp(
+                "concat(value, values?...)",
+                "Concatenates values.",
+                [new("value", "First value."), new("values?...", "Zero or more additional values.")],
+                1));
+
+        var result = await new SignatureHelpHandler(documents, signatures.Object).Handle(new SignatureHelpParams
+        {
+            TextDocument = new TextDocumentIdentifier { Uri = uri },
+            Position = new Position(0, 11)
+        }, CancellationToken.None);
+
+        var information = result!.Signatures.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(information.Label, Is.EqualTo("concat(value, values?...)"));
+            Assert.That(information.Parameters!.ElementAt(1).Label.ToString(),
+                Is.EqualTo("values?..."));
+            Assert.That(information.Parameters!.ElementAt(1).Documentation?.String,
+                Is.EqualTo("Zero or more additional values."));
+        });
+    }
 }

@@ -25,7 +25,17 @@ public sealed class FunctionSignatureHelpServiceTests
         [
             new("nested", false, "Nested value."),
             new("other", false, "Other value.")
-        ], "Outer function.", "Test")
+        ], "Outer function.", "Test"),
+        new("concat", [],
+        [
+            new("value", false, "First value."),
+            new("values", true, "Zero or more additional values.", true, 0)
+        ], "Concatenates values.", "Test"),
+        new("spread", [],
+        [
+            new("values", false, "One or more values.", true),
+            new("final", false, "Final value.")
+        ], "Spreads values.", "Test")
     ]);
 
     private readonly FunctionSignatureHelpService service = new(Catalog);
@@ -97,6 +107,38 @@ public sealed class FunctionSignatureHelpServiceTests
         var result = service.GetSignatureHelp(Parse(text), cursor);
 
         Assert.That(result?.ActiveParameter, Is.EqualTo(1));
+    }
+
+    [TestCase("concat(1, |2)")]
+    [TestCase("concat(1, 2, |3)")]
+    [TestCase("concat(1, 2, 3, |4)")]
+    public void GetSignatureHelp_VariadicArgument_KeepsVariadicParameterActive(string textWithCursor)
+    {
+        var (text, cursor) = RemoveCursor(textWithCursor);
+
+        var result = service.GetSignatureHelp(Parse(text), cursor);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result?.Signature, Is.EqualTo("concat(value, values?...)"));
+            Assert.That(result?.ActiveParameter, Is.EqualTo(1));
+            Assert.That(result?.Parameters[1], Is.EqualTo(
+                new SignatureParameter("values?...", "Zero or more additional values.")));
+        });
+    }
+
+    [TestCase("spread(|1, 3)", 0)]
+    [TestCase("spread(1, |2, 3)", 0)]
+    [TestCase("spread(1, 2, |3)", 1)]
+    public void GetSignatureHelp_NonFinalVariadicParameter_ReservesTrailingArguments(
+        string textWithCursor,
+        int expected)
+    {
+        var (text, cursor) = RemoveCursor(textWithCursor);
+
+        var result = service.GetSignatureHelp(Parse(text), cursor);
+
+        Assert.That(result?.ActiveParameter, Is.EqualTo(expected));
     }
 
     [TestCase("foo|(1)")]

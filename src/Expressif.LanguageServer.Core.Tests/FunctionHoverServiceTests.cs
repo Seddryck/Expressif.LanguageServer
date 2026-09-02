@@ -16,7 +16,12 @@ public sealed class FunctionHoverServiceTests
             new("index", false, "Token index."),
             new("separator", true, "Token separator.")
         ], "Returns a token.", "Text"),
-        new("upper", ["text-to-upper"], [], "Uppercase text.", "Text")
+        new("upper", ["text-to-upper"], [], "Uppercase text.", "Text"),
+        new("concat", [],
+        [
+            new("value", false, "First value."),
+            new("values", true, "Additional values.", true, 0)
+        ], "Concatenates values.", "Text")
     ]);
 
     private readonly FunctionHoverService service = new(Catalog);
@@ -65,6 +70,14 @@ public sealed class FunctionHoverServiceTests
         var result = service.GetHover(Parse(text), 1);
 
         Assert.That(result?.Signature, Is.EqualTo("token(index, separator?)"));
+    }
+
+    [Test]
+    public void GetHover_OptionalVariadicParameter_RendersBothModifiers()
+    {
+        var result = service.GetHover(Parse("concat(1)"), 1);
+
+        Assert.That(result?.Signature, Is.EqualTo("concat(value, values?...)"));
     }
 
     [Test]

@@ -11,7 +11,11 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
             function.Name,
             function.Aliases.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
             function.Parameters.Select(parameter => new FunctionParameterMetadata(
-                parameter.Name, parameter.Optional, parameter.Summary)).ToArray(),
+                parameter.Name,
+                parameter.Optional,
+                parameter.Summary,
+                parameter.Variadic,
+                parameter.MinimumCardinality)).ToArray(),
             function.Summary,
             function.Scope))
         .OrderBy(function => function.Name, StringComparer.OrdinalIgnoreCase)

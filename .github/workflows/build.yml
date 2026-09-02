@@ -1,4 +1,4 @@
-name: Build
+name: CI
 
 on:
   push:
@@ -19,18 +19,18 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -100,7 +100,7 @@ jobs:
           Compress-Archive -Path 'artifacts/publish/*' -DestinationPath $archive
 
       - name: Upload VS Code extension package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vscode-extension-${{ steps.version.outputs.semver }}-win-x64
           path: artifacts/Expressif-LanguageSupport-${{ steps.version.outputs.semver }}-win-x64.vsix
@@ -108,7 +108,7 @@ jobs:
 
       - name: Upload release candidate
         if: steps.version.outputs.release-eligible == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-candidate
           path: |
@@ -131,7 +131,7 @@ jobs:
 
     steps:
       - name: Download release candidate
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: release-candidate
           path: artifacts

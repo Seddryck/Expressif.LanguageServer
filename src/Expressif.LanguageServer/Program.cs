@@ -3,6 +3,7 @@ using Expressif.LanguageServer.Core.Completion;
 using Expressif.LanguageServer.Core.Documents;
 using Expressif.LanguageServer.Core.Functions;
 using Expressif.LanguageServer.Core.Hover;
+using Expressif.LanguageServer.Core.SignatureHelp;
 using Expressif.LanguageServer.Core.Syntax;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -28,10 +29,12 @@ public static class Program
                 services.AddSingleton<IFunctionCatalog, ExpressifFunctionCatalog>();
                 services.AddSingleton<ICompletionService, CompletionService>();
                 services.AddSingleton<IFunctionHoverService, FunctionHoverService>();
+                services.AddSingleton<IFunctionSignatureHelpService, FunctionSignatureHelpService>();
             })
             .WithHandler<TextDocumentSyncHandler>()
             .WithHandler<CompletionHandler>()
-            .WithHandler<HoverHandler>());
+            .WithHandler<HoverHandler>()
+            .WithHandler<SignatureHelpHandler>());
 
         await server.WaitForExit;
     }

@@ -29,6 +29,13 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vscode-extension/package-lock.json
+
       - name: Install GitVersion
         shell: pwsh
         run: dotnet tool install --global GitVersion.Tool
@@ -64,18 +71,49 @@ jobs:
       - name: Publish self-contained application
         run: dotnet publish src/Expressif.LanguageServer/Expressif.LanguageServer.csproj --configuration Release --framework net10.0 --runtime win-x64 --self-contained true --no-restore --nologo -p:Version=${{ steps.version.outputs.semver }} --output artifacts/publish
 
+      - name: Install VS Code extension dependencies
+        run: npm ci --prefix vscode-extension
+
+      - name: Package VS Code extension
+        shell: pwsh
+        run: |
+          $server = 'vscode-extension/server/win-x64'
+          New-Item -ItemType Directory -Force -Path $server | Out-Null
+          Copy-Item -Path 'artifacts/publish/*' -Destination $server -Recurse -Force
+
+          npm run compile --prefix vscode-extension
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          Push-Location vscode-extension
+          try {
+            npx vsce package --out "../artifacts/Expressif-LanguageSupport-$env:VERSION-win-x64.vsix"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          finally {
+            Pop-Location
+          }
+
       - name: Create release archive
         shell: pwsh
         run: |
           $archive = "artifacts/Expressif-LanguageServer-$env:VERSION-net10.0-win-x64.zip"
           Compress-Archive -Path 'artifacts/publish/*' -DestinationPath $archive
 
+      - name: Upload VS Code extension package
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension-${{ steps.version.outputs.semver }}-win-x64
+          path: artifacts/Expressif-LanguageSupport-${{ steps.version.outputs.semver }}-win-x64.vsix
+          if-no-files-found: error
+
       - name: Upload release candidate
         if: steps.version.outputs.release-eligible == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: release-candidate
-          path: artifacts/Expressif-LanguageServer-${{ steps.version.outputs.semver }}-net10.0-win-x64.zip
+          path: |
+            artifacts/Expressif-LanguageServer-${{ steps.version.outputs.semver }}-net10.0-win-x64.zip
+            artifacts/Expressif-LanguageSupport-${{ steps.version.outputs.semver }}-win-x64.vsix
           if-no-files-found: error
           retention-days: 1
 
@@ -106,4 +144,5 @@ jobs:
         run: |
           $tag = "v$env:VERSION"
           $archive = "artifacts/Expressif-LanguageServer-$env:VERSION-net10.0-win-x64.zip"
-          gh release create $tag $archive --repo '${{ github.repository }}' --target '${{ github.sha }}' --title $tag --generate-notes
+          $extension = "artifacts/Expressif-LanguageSupport-$env:VERSION-win-x64.vsix"
+          gh release create $tag $archive $extension --repo '${{ github.repository }}' --target '${{ github.sha }}' --title $tag --generate-notes

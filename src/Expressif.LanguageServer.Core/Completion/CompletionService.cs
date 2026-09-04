@@ -41,22 +41,27 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
         return functions.Functions
             .SelectMany(function => new[]
                 {
-                    CreateSuggestion(function.Name, true)
+                    CreateSuggestion(function, function.Name, true)
                 }
-                .Concat(function.Aliases.Select(alias => CreateSuggestion(alias, false))))
+                .Concat(function.Aliases.Select(alias => CreateSuggestion(function, alias, false))))
             .Where(suggestion => suggestion.Label.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            .DistinctBy(suggestion => suggestion.Label, StringComparer.OrdinalIgnoreCase)
-            .OrderByDescending(suggestion => suggestion.IsCanonical)
+            .OrderBy(suggestion => suggestion.Deprecated)
+            .ThenByDescending(suggestion => suggestion.IsCanonical)
             .ThenBy(suggestion => suggestion.Label, StringComparer.OrdinalIgnoreCase)
+            .DistinctBy(suggestion => suggestion.Label, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        CompletionSuggestion CreateSuggestion(string functionName, bool isCanonical)
+        CompletionSuggestion CreateSuggestion(FunctionMetadata function, string functionName, bool isCanonical)
             => new(
                 functionName,
                 needsLeadingSpace ? $" {functionName}" : functionName,
                 isCanonical,
                 replacementStart,
-                replacementLength);
+                replacementLength,
+                function.Description,
+                function.Deprecated,
+                function.Replacement,
+                function.Sunset);
     }
 
     private static bool ProbeIsFunction(string probeText)

@@ -15,4 +15,8 @@ public sealed record FunctionMetadata(
     IReadOnlyList<string> Aliases,
     IReadOnlyList<FunctionParameterMetadata> Parameters,
     string Description,
-    string Category);
+    string Category,
+    bool Deprecated = false,
+    string? Replacement = null,
+    string? Sunset = null,
+    bool SafeDirectReplacement = false);

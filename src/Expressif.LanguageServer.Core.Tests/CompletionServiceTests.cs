@@ -106,6 +106,27 @@ public sealed class CompletionServiceTests
         }));
     }
 
+    [Test]
+    public void GetCompletions_DeprecatedFunction_IsMarkedAndRankedAfterActiveFunctions()
+    {
+        var service = new CompletionService(new TestFunctionCatalog(
+        [
+            new("append", [], [], "Appends text.", "Text", true, "suffix", "3.0"),
+            new("suffix", [], [], "Suffixes text.", "Text")
+        ]));
+
+        var result = service.GetCompletions(string.Empty, 0);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Select(item => item.Label), Is.EqualTo(new[] { "suffix", "append" }));
+            Assert.That(result[0].Deprecated, Is.False);
+            Assert.That(result[1].Deprecated, Is.True);
+            Assert.That(result[1].Replacement, Is.EqualTo("suffix"));
+            Assert.That(result[1].Sunset, Is.EqualTo("3.0"));
+        });
+    }
+
     private sealed class TestFunctionCatalog(IReadOnlyList<FunctionMetadata> functions) : IFunctionCatalog
     {
         public IReadOnlyList<FunctionMetadata> Functions { get; } = functions;

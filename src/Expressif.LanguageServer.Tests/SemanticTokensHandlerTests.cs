@@ -21,7 +21,8 @@ public sealed class SemanticTokensHandlerTests
                     SemanticTokenType.Property,
                     SemanticTokenType.String,
                     SemanticTokenType.Number,
-                    SemanticTokenType.Operator
+                    SemanticTokenType.Operator,
+                    SemanticTokenType.Comment
                 }));
             Assert.That(SemanticTokensHandler.Legend.TokenModifiers, Is.Empty);
         });
@@ -44,6 +45,24 @@ public sealed class SemanticTokensHandlerTests
             new SemanticTokenSegment(0, 3, 6, SemanticTokenKind.Variable),
             new SemanticTokenSegment(1, 2, 7, SemanticTokenKind.String),
             new SemanticTokenSegment(2, 0, 5, SemanticTokenKind.String)
+        }));
+    }
+
+    [Test]
+    public void MapToSingleLineSegments_MultilineComment_SplitsAtLineBoundaries()
+    {
+        const string text = "@x /* first\r\nsecond */";
+        var tokens = new[]
+        {
+            new SemanticTokenSpan(3, 19, SemanticTokenKind.Comment)
+        };
+
+        var segments = SemanticTokensHandler.MapToSingleLineSegments(text, tokens);
+
+        Assert.That(segments, Is.EqualTo(new[]
+        {
+            new SemanticTokenSegment(0, 3, 8, SemanticTokenKind.Comment),
+            new SemanticTokenSegment(1, 0, 9, SemanticTokenKind.Comment)
         }));
     }
 }

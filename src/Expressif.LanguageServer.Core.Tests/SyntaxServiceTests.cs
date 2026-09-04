@@ -17,7 +17,24 @@ public sealed class SyntaxServiceTests
         {
             Assert.That(result.IsValid, Is.True);
             Assert.That(result.SyntaxTree, Is.Not.Null);
+            Assert.That(result.SyntaxDocument, Is.Not.Null);
             Assert.That(result.Errors, Is.Empty);
+        });
+    }
+
+    [Test]
+    public void Parse_Comments_ReturnsLosslessSyntaxDocument()
+    {
+        const string text = "// source\n.name /* projected field */ | upper";
+
+        var result = service.Parse(text);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsValid, Is.True);
+            Assert.That(result.SyntaxDocument!.Text, Is.EqualTo(text));
+            Assert.That(result.SyntaxDocument.Comments.Select(comment => comment.Text),
+                Is.EqualTo(new[] { "// source", "/* projected field */" }));
         });
     }
 

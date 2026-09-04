@@ -103,10 +103,11 @@ public sealed class TextDocumentSyncHandlerTests
     [Test]
     public async Task Open_DeprecatedFunction_PublishesHintWithDeprecatedTagAsync()
     {
-        var syntaxTree = Expressif.Syntax.ExpressifSyntax.Parse("append()");
+        var syntaxDocument = Expressif.Syntax.ExpressifSyntax.ParseDocument("append()");
+        var syntaxTree = syntaxDocument.Expression;
         var syntax = new Mock<ISyntaxService>();
         syntax.Setup(service => service.Parse("append()"))
-            .Returns(new SyntaxParseResult(syntaxTree, []));
+            .Returns(new SyntaxParseResult(syntaxDocument, []));
         var documents = new DocumentStore(syntax.Object);
         lifecycleDiagnostics.Setup(service => service.GetDiagnostics(syntaxTree))
             .Returns([new FunctionLifecycleDiagnostic(

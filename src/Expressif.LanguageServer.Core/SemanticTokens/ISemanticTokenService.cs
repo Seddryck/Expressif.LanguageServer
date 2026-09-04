@@ -4,5 +4,5 @@ namespace Expressif.LanguageServer.Core.SemanticTokens;
 
 public interface ISemanticTokenService
 {
-    IReadOnlyList<SemanticTokenSpan> GetTokens(RootExpressionSyntax syntaxTree, string text);
+    IReadOnlyList<SemanticTokenSpan> GetTokens(SourceFileSyntax syntaxDocument, string text);
 }

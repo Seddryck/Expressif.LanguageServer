@@ -9,10 +9,10 @@ public sealed class FunctionCodeActionService(IFunctionCatalog functions) : IFun
         RootExpressionSyntax syntaxTree, int selectionStart, int selectionLength)
     {
         ArgumentNullException.ThrowIfNull(syntaxTree);
-        if (selectionStart < 0 || selectionLength < 0 || selectionStart + selectionLength > syntaxTree.Text.Length)
+        if (selectionStart < 0 || selectionLength < 0)
             throw new ArgumentOutOfRangeException(nameof(selectionStart));
 
-        var selectionEnd = selectionStart + selectionLength;
+        var selectionEnd = (long)selectionStart + selectionLength;
         return DescendantsAndSelf(syntaxTree)
             .OfType<FunctionCallSyntax>()
             .Where(call => selectionLength == 0

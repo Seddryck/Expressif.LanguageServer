@@ -45,6 +45,6 @@ public sealed class DocumentStore(ISyntaxService syntaxService) : IDocumentStore
     private DocumentSnapshot CreateSnapshot(Uri uri, string text, int? version)
     {
         var result = syntaxService.Parse(text);
-        return new(uri, text, version, result.SyntaxTree, result.Errors);
+        return new(uri, text, version, result.SyntaxDocument, result.Errors);
     }
 }

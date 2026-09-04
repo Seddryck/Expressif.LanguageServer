@@ -7,7 +7,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 namespace Expressif.LanguageServer.Handlers;
 
 /// <summary>
-/// Provides the stable Expressif legend: variable, function, property, string, number, operator.
+/// Provides the stable Expressif legend: variable, function, property, string, number, operator, comment.
 /// </summary>
 public sealed class SemanticTokensHandler(
     IDocumentStore documents,
@@ -21,7 +21,8 @@ public sealed class SemanticTokensHandler(
             SemanticTokenType.Property,
             SemanticTokenType.String,
             SemanticTokenType.Number,
-            SemanticTokenType.Operator),
+            SemanticTokenType.Operator,
+            SemanticTokenType.Comment),
         TokenModifiers = new Container<SemanticTokenModifier>()
     };
 
@@ -29,10 +30,10 @@ public sealed class SemanticTokensHandler(
         ITextDocumentIdentifierParams identifier, CancellationToken cancellationToken)
     {
         if (!documents.TryGet(identifier.TextDocument.Uri.ToUri(), out var document) ||
-            document?.SyntaxTree is null)
+            document?.SyntaxDocument is null)
             return Task.CompletedTask;
 
-        var tokens = semanticTokens.GetTokens(document.SyntaxTree, document.Text);
+        var tokens = semanticTokens.GetTokens(document.SyntaxDocument, document.Text);
         foreach (var segment in MapToSingleLineSegments(document.Text, tokens))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -109,6 +110,7 @@ public sealed class SemanticTokensHandler(
         SemanticTokenKind.String => SemanticTokenType.String,
         SemanticTokenKind.Number => SemanticTokenType.Number,
         SemanticTokenKind.Operator => SemanticTokenType.Operator,
+        SemanticTokenKind.Comment => SemanticTokenType.Comment,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 }

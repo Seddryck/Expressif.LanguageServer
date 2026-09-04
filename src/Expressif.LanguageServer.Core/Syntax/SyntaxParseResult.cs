@@ -2,7 +2,8 @@ using Expressif.Syntax;
 
 namespace Expressif.LanguageServer.Core.Syntax;
 
-public sealed record SyntaxParseResult(RootExpressionSyntax? SyntaxTree, IReadOnlyList<SyntaxError> Errors)
+public sealed record SyntaxParseResult(SourceFileSyntax? SyntaxDocument, IReadOnlyList<SyntaxError> Errors)
 {
-    public bool IsValid => SyntaxTree is not null && Errors.Count == 0;
+    public RootExpressionSyntax? SyntaxTree => SyntaxDocument?.Expression;
+    public bool IsValid => SyntaxDocument is not null && Errors.Count == 0;
 }

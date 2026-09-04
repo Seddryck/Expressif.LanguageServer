@@ -7,5 +7,6 @@ public enum SemanticTokenKind
     Property,
     String,
     Number,
-    Operator
+    Operator,
+    Comment
 }

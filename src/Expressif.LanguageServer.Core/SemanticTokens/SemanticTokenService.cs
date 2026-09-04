@@ -4,13 +4,13 @@ namespace Expressif.LanguageServer.Core.SemanticTokens;
 
 public sealed class SemanticTokenService : ISemanticTokenService
 {
-    public IReadOnlyList<SemanticTokenSpan> GetTokens(RootExpressionSyntax syntaxTree, string text)
+    public IReadOnlyList<SemanticTokenSpan> GetTokens(SourceFileSyntax syntaxDocument, string text)
     {
-        ArgumentNullException.ThrowIfNull(syntaxTree);
+        ArgumentNullException.ThrowIfNull(syntaxDocument);
         ArgumentNullException.ThrowIfNull(text);
 
         var tokens = new List<SemanticTokenSpan>();
-        foreach (var node in DescendantsAndSelf(syntaxTree))
+        foreach (var node in DescendantsAndSelf(syntaxDocument))
         {
             switch (node)
             {
@@ -32,6 +32,9 @@ public sealed class SemanticTokenService : ISemanticTokenService
                     break;
                 case NumericLiteralSyntax:
                     Add(tokens, node.Span.Start, node.Span.Length, SemanticTokenKind.Number, text.Length);
+                    break;
+                case CommentSyntax:
+                    Add(tokens, node.Span.Start, node.Span.Length, SemanticTokenKind.Comment, text.Length);
                     break;
                 case UnaryOperatorSyntax:
                 case BinaryOperatorSyntax:

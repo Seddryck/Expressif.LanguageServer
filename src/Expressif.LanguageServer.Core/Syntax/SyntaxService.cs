@@ -9,7 +9,7 @@ public sealed class SyntaxService : ISyntaxService
         ArgumentNullException.ThrowIfNull(text);
         try
         {
-            return new(ExpressifSyntax.Parse(text), []);
+            return new(ExpressifSyntax.ParseDocument(text), []);
         }
         catch (ExpressifSyntaxException exception)
         {

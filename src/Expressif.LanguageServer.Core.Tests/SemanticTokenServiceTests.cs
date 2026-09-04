@@ -84,11 +84,40 @@ public sealed class SemanticTokenServiceTests
             }));
     }
 
+    [Test]
+    public void GetTokens_LineAndBlockComments_ClassifiesExactRanges()
+    {
+        const string text = "// explain the source\n@customer /* before projection */ | .name";
+
+        var tokens = GetTokens(text);
+
+        Assert.That(tokens.Select(token => (text.Substring(token.Start, token.Length), token.Kind)),
+            Is.EqualTo(new[]
+            {
+                ("// explain the source", SemanticTokenKind.Comment),
+                ("@customer", SemanticTokenKind.Variable),
+                ("/* before projection */", SemanticTokenKind.Comment),
+                ("|", SemanticTokenKind.Operator),
+                ("name", SemanticTokenKind.Property)
+            }));
+    }
+
+    [Test]
+    public void GetTokens_MultilineBlockComment_ReturnsSingleSourceSpan()
+    {
+        const string text = "@customer /* first line\r\nsecond line */ | .name";
+
+        var comment = GetTokens(text).Single(token => token.Kind == SemanticTokenKind.Comment);
+
+        Assert.That(text.Substring(comment.Start, comment.Length),
+            Is.EqualTo("/* first line\r\nsecond line */"));
+    }
+
     private IReadOnlyList<SemanticTokenSpan> GetTokens(string text)
     {
         var parsed = syntax.Parse(text);
-        Assert.That(parsed.SyntaxTree, Is.Not.Null, string.Join(Environment.NewLine, parsed.Errors));
-        return service.GetTokens(parsed.SyntaxTree!, text);
+        Assert.That(parsed.SyntaxDocument, Is.Not.Null, string.Join(Environment.NewLine, parsed.Errors));
+        return service.GetTokens(parsed.SyntaxDocument!, text);
     }
 
 }

@@ -43,4 +43,28 @@ public sealed class CodeActionHandlerTests
             Assert.That(edit.Range.End, Is.EqualTo(new Position(0, 6)));
         });
     }
+
+    [Test]
+    public async Task Handle_SelectionThroughEndOfLine_ReturnsQuickFixAsync()
+    {
+        var documents = new DocumentStore(new SyntaxService());
+        var uri = DocumentUri.FromFileSystemPath("/workspace/example.expr");
+        documents.Open(uri.ToUri(), "legacy()\r\n", 1);
+        var actions = new Mock<IFunctionCodeActionService>();
+        actions.Setup(service => service.GetReplacements(
+                It.IsAny<Expressif.Syntax.RootExpressionSyntax>(), 0, 10))
+            .Returns([new FunctionReplacement("legacy", "modern", 0, 6)]);
+        var handler = new CodeActionHandler(documents, actions.Object);
+
+        var result = await handler.Handle(new CodeActionParams
+        {
+            TextDocument = new TextDocumentIdentifier { Uri = uri },
+            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                new Position(0, 0), new Position(1, 0)),
+            Context = new CodeActionContext()
+        }, CancellationToken.None);
+
+        Assert.That(result!.Single().CodeAction, Is.Not.Null);
+        actions.VerifyAll();
+    }
 }

@@ -32,6 +32,24 @@ public sealed class FunctionCodeActionServiceTests
         Assert.That(service.GetReplacements(Parse("legacy()"), 2, 0), Is.Empty);
     }
 
+    [Test]
+    public void GetReplacements_SelectionExtendsPastSyntaxText_ReturnsRename()
+    {
+        var service = CreateService(safe: true);
+
+        var replacement = service.GetReplacements(Parse("legacy()"), 0, 10).Single();
+
+        Assert.That(replacement.NewName, Is.EqualTo("modern"));
+    }
+
+    [Test]
+    public void GetReplacements_SelectionAfterSyntaxText_ReturnsNoRename()
+    {
+        var service = CreateService(safe: true);
+
+        Assert.That(service.GetReplacements(Parse("legacy()"), 9, 1), Is.Empty);
+    }
+
     private static FunctionCodeActionService CreateService(bool safe) => new(new TestFunctionCatalog(
     [
         new("legacy", [], [], "Legacy.", "Text", true, "modern", "3.0", safe),

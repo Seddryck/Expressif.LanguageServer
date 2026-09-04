@@ -45,4 +45,35 @@ public sealed class CompletionHandlerTests
             Assert.That(edit.Range.End, Is.EqualTo(new Position(0, 15)));
         });
     }
+
+    [Test]
+    public async Task Handle_DeprecatedSuggestion_UsesStandardDeprecationTagAndDocumentationAsync()
+    {
+        var syntax = new Mock<ISyntaxService>();
+        syntax.Setup(service => service.Parse(It.IsAny<string>()))
+            .Returns(new SyntaxParseResult(null, []));
+        var documents = new DocumentStore(syntax.Object);
+        var uri = DocumentUri.FromFileSystemPath("/workspace/example.expr");
+        documents.Open(uri.ToUri(), "app", 1);
+        var completions = new Mock<ICompletionService>();
+        completions.Setup(service => service.GetCompletions("app", 3))
+            .Returns([new CompletionSuggestion(
+                "append", "append", true, 0, 3, "Appends text.", true, "suffix", "3.0")]);
+        var handler = new CompletionHandler(documents, completions.Object);
+
+        var item = (await handler.Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier { Uri = uri },
+            Position = new Position(0, 3)
+        }, CancellationToken.None)).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(item.Deprecated, Is.True);
+            Assert.That(item.Tags, Does.Contain(CompletionItemTag.Deprecated));
+            Assert.That(item.Detail, Is.EqualTo("Deprecated · use suffix · sunsets in 3.0"));
+            Assert.That(item.Documentation?.MarkupContent?.Value,
+                Is.EqualTo("Appends text.\n\n**Deprecated.** Use `suffix` instead. Sunset: Expressif 3.0."));
+        });
+    }
 }

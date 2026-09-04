@@ -21,6 +21,8 @@ public sealed class HoverHandler(IDocumentStore documents, IFunctionHoverService
         var contents = $"```expressif\n{hover.Signature}\n```";
         if (!string.IsNullOrWhiteSpace(hover.Description))
             contents += $"\n\n{hover.Description}";
+        if (!string.IsNullOrWhiteSpace(hover.LifecycleNotice))
+            contents += $"\n\n{hover.LifecycleNotice}";
 
         return Task.FromResult<Hover?>(new Hover
         {

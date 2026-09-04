@@ -5,4 +5,8 @@ public sealed record CompletionSuggestion(
     string InsertText,
     bool IsCanonical,
     int ReplacementStart,
-    int ReplacementLength);
+    int ReplacementLength,
+    string Description = "",
+    bool Deprecated = false,
+    string? Replacement = null,
+    string? Sunset = null);

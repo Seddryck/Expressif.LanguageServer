@@ -1,4 +1,5 @@
 using Expressif.LanguageServer.Core.Documents;
+using Expressif.LanguageServer.Core.Diagnostics;
 using Expressif.LanguageServer.Core.Syntax;
 using Expressif.LanguageServer.Handlers;
 using Expressif.Syntax;
@@ -16,6 +17,7 @@ public sealed class TextDocumentSyncHandlerTests
 {
     private static readonly DocumentUri DocumentUri = DocumentUri.FromFileSystemPath("/workspace/example.expr");
     private Mock<ITextDocumentLanguageServer> textDocument = null!;
+    private Mock<IFunctionLifecycleDiagnosticService> lifecycleDiagnostics = null!;
     private TextDocumentSyncHandler handler = null!;
 
     [SetUp]
@@ -31,7 +33,8 @@ public sealed class TextDocumentSyncHandlerTests
         textDocument = new();
         var server = new Mock<ILanguageServerFacade>();
         server.SetupGet(facade => facade.TextDocument).Returns(textDocument.Object);
-        handler = new(new DocumentStore(syntax.Object), server.Object);
+        lifecycleDiagnostics = new();
+        handler = new(new DocumentStore(syntax.Object), lifecycleDiagnostics.Object, server.Object);
     }
 
     [Test]
@@ -94,6 +97,41 @@ public sealed class TextDocumentSyncHandlerTests
         {
             Assert.That(publication.Uri, Is.EqualTo(DocumentUri));
             Assert.That(publication.Diagnostics, Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task Open_DeprecatedFunction_PublishesHintWithDeprecatedTagAsync()
+    {
+        var syntaxTree = Expressif.Syntax.ExpressifSyntax.Parse("append()");
+        var syntax = new Mock<ISyntaxService>();
+        syntax.Setup(service => service.Parse("append()"))
+            .Returns(new SyntaxParseResult(syntaxTree, []));
+        var documents = new DocumentStore(syntax.Object);
+        lifecycleDiagnostics.Setup(service => service.GetDiagnostics(syntaxTree))
+            .Returns([new FunctionLifecycleDiagnostic(
+                "append", "Function 'append' is deprecated.", 0, 6)]);
+        handler = new(documents, lifecycleDiagnostics.Object,
+            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object));
+
+        await handler.Handle(new DidOpenTextDocumentParams
+        {
+            TextDocument = new TextDocumentItem
+            {
+                Uri = DocumentUri,
+                LanguageId = "expressif",
+                Version = 1,
+                Text = "append()"
+            }
+        }, CancellationToken.None);
+
+        var diagnostic = PublishedDiagnostics().Single().Diagnostics.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Hint));
+            Assert.That(diagnostic.Tags, Does.Contain(DiagnosticTag.Deprecated));
+            Assert.That(diagnostic.Range.Start, Is.EqualTo(new Position(0, 0)));
+            Assert.That(diagnostic.Range.End, Is.EqualTo(new Position(0, 6)));
         });
     }
 

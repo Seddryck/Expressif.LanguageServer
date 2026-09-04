@@ -21,6 +21,16 @@ public sealed class CompletionHandler(IDocumentStore documents, ICompletionServi
             .Select((suggestion, index) => new CompletionItem
             {
                 Label = suggestion.Label,
+                Detail = CreateDetail(suggestion),
+                Documentation = new StringOrMarkupContent(new MarkupContent
+                {
+                    Kind = MarkupKind.Markdown,
+                    Value = CreateDocumentation(suggestion)
+                }),
+                Deprecated = suggestion.Deprecated,
+                Tags = suggestion.Deprecated
+                    ? new Container<CompletionItemTag>(CompletionItemTag.Deprecated)
+                    : null,
                 TextEdit = new TextEdit
                 {
                     NewText = suggestion.InsertText,
@@ -29,7 +39,7 @@ public sealed class CompletionHandler(IDocumentStore documents, ICompletionServi
                         GetPosition(document.Text, suggestion.ReplacementStart + suggestion.ReplacementLength))
                 },
                 Kind = CompletionItemKind.Function,
-                SortText = $"{(suggestion.IsCanonical ? 0 : 1)}-{index:D5}"
+                SortText = $"{(suggestion.Deprecated ? 1 : 0)}-{(suggestion.IsCanonical ? 0 : 1)}-{index:D5}"
             });
         return Task.FromResult(new CompletionList(items));
     }
@@ -41,6 +51,35 @@ public sealed class CompletionHandler(IDocumentStore documents, ICompletionServi
             ResolveProvider = false,
             TriggerCharacters = new Container<string>("|", "-")
         };
+
+    private static string CreateDetail(CompletionSuggestion suggestion)
+    {
+        if (!suggestion.Deprecated)
+            return "Expressif function";
+
+        var details = "Deprecated";
+        if (!string.IsNullOrWhiteSpace(suggestion.Replacement))
+            details += $" · use {suggestion.Replacement}";
+        if (!string.IsNullOrWhiteSpace(suggestion.Sunset))
+            details += $" · sunsets in {suggestion.Sunset}";
+        return details;
+    }
+
+    private static string CreateDocumentation(CompletionSuggestion suggestion)
+    {
+        var documentation = suggestion.Description;
+        if (!suggestion.Deprecated)
+            return documentation;
+
+        var lifecycle = "**Deprecated.**";
+        if (!string.IsNullOrWhiteSpace(suggestion.Replacement))
+            lifecycle += $" Use `{suggestion.Replacement}` instead.";
+        if (!string.IsNullOrWhiteSpace(suggestion.Sunset))
+            lifecycle += $" Sunset: Expressif {suggestion.Sunset}.";
+        return string.IsNullOrWhiteSpace(documentation)
+            ? lifecycle
+            : $"{documentation}\n\n{lifecycle}";
+    }
 
     private static bool TryGetOffset(string text, Position position, out int offset)
     {

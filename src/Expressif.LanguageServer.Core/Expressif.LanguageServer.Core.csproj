@@ -4,8 +4,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Expressif" Version="2.26.0" GeneratePathProperty="true" />
-    <PackageReference Include="Expressif.Syntax" Version="0.33.0" />
+    <PackageReference Include="Expressif" Version="2.32.0" GeneratePathProperty="true" />
+    <PackageReference Include="Expressif.Syntax" Version="0.34.0" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(PkgExpressif)\lib\$(TargetFramework)\Expressif.xml"

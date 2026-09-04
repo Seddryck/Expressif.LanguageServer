@@ -21,6 +21,20 @@ public sealed class ExpressifFunctionCatalogTests
     }
 
     [Test]
+    public void Functions_DeprecatedAppend_ExposesLifecycleMetadataAndUnsafeReplacement()
+    {
+        var function = new ExpressifFunctionCatalog().Functions.Single(item => item.Name == "append");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(function.Deprecated, Is.True);
+            Assert.That(function.Replacement, Is.EqualTo("suffix"));
+            Assert.That(function.Sunset, Is.EqualTo("3.0"));
+            Assert.That(function.SafeDirectReplacement, Is.False);
+        });
+    }
+
+    [Test]
     public void Functions_IncludeSignatureMetadataFromExpressifIntrospection()
     {
         var functions = new ExpressifFunctionCatalog().Functions;

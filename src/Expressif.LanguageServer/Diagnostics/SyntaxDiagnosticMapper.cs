@@ -1,5 +1,6 @@
 using System.Text;
 using Expressif.Syntax;
+using Expressif.LanguageServer.Core.Diagnostics;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Range = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
@@ -19,6 +20,20 @@ internal static class SyntaxDiagnosticMapper
             Severity = DiagnosticSeverity.Error,
             Source = "expressif",
             Message = CreateMessage(error)
+        };
+    }
+
+    public static Diagnostic Map(string source, FunctionLifecycleDiagnostic diagnostic)
+    {
+        return new Diagnostic
+        {
+            Message = diagnostic.Message,
+            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                ToPosition(source, diagnostic.IdentifierStart),
+                ToPosition(source, diagnostic.IdentifierStart + diagnostic.IdentifierLength)),
+            Severity = DiagnosticSeverity.Hint,
+            Tags = new Container<DiagnosticTag>(DiagnosticTag.Deprecated),
+            Source = "expressif"
         };
     }
 

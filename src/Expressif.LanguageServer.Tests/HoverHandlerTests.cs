@@ -59,4 +59,28 @@ public sealed class HoverHandlerTests
 
         Assert.That(result, Is.Null);
     }
+
+    [Test]
+    public async Task Handle_DeprecatedFunction_AppendsLifecycleNoticeAsync()
+    {
+        var documents = new DocumentStore(new SyntaxService());
+        var uri = DocumentUri.FromFileSystemPath("/workspace/example.expr");
+        documents.Open(uri.ToUri(), "append()", 1);
+        var hovers = new Mock<IFunctionHoverService>();
+        hovers.Setup(service => service.GetHover(It.IsAny<Expressif.Syntax.RootExpressionSyntax>(), 2))
+            .Returns(new FunctionHover(
+                "append(text)", "Appends text.", 0, 6,
+                "Deprecated. Use suffix instead.\nSunset: Expressif 3.0."));
+        var handler = new HoverHandler(documents, hovers.Object);
+
+        var result = await handler.Handle(new HoverParams
+        {
+            TextDocument = new TextDocumentIdentifier { Uri = uri },
+            Position = new Position(0, 2)
+        }, CancellationToken.None);
+
+        Assert.That(result?.Contents.MarkupContent?.Value, Is.EqualTo(
+            "```expressif\nappend(text)\n```\n\nAppends text.\n\n" +
+            "Deprecated. Use suffix instead.\nSunset: Expressif 3.0."));
+    }
 }

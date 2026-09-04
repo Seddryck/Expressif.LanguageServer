@@ -96,6 +96,31 @@ public sealed class FunctionHoverServiceTests
         });
     }
 
+    [Test]
+    public void GetHover_DeprecatedFunction_IncludesReplacementAndSunset()
+    {
+        var service = new FunctionHoverService(new TestFunctionCatalog(
+        [
+            new("append", [], [], "Appends text.", "Text", true, "suffix", "3.0")
+        ]));
+
+        var result = service.GetHover(Parse("append(\"-x\")"), 2);
+
+        Assert.That(result?.LifecycleNotice,
+            Is.EqualTo("Deprecated. Use suffix instead.\nSunset: Expressif 3.0."));
+    }
+
+    [Test]
+    public void GetHover_DeprecatedFunctionWithoutOptionalMetadata_FallsBackCleanly()
+    {
+        var service = new FunctionHoverService(new TestFunctionCatalog(
+        [
+            new("legacy", [], [], "Legacy.", "Text", true)
+        ]));
+
+        Assert.That(service.GetHover(Parse("legacy()"), 2)?.LifecycleNotice, Is.EqualTo("Deprecated."));
+    }
+
     [TestCase("\"upper\"", 2)]
     [TestCase(".name | upper", 6)]
     [TestCase("this-function-does-not-exist(1)", 4)]

@@ -1,4 +1,5 @@
 using Expressif.LanguageServer.Core.Documents;
+using Expressif.LanguageServer.Core.Diagnostics;
 using Expressif.LanguageServer.Diagnostics;
 using MediatR;
 using OmniSharp.Extensions.LanguageServer.Protocol;
@@ -10,7 +11,10 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
 
 namespace Expressif.LanguageServer.Handlers;
 
-public sealed class TextDocumentSyncHandler(IDocumentStore documents, ILanguageServerFacade server) : TextDocumentSyncHandlerBase
+public sealed class TextDocumentSyncHandler(
+    IDocumentStore documents,
+    IFunctionLifecycleDiagnosticService lifecycleDiagnostics,
+    ILanguageServerFacade server) : TextDocumentSyncHandlerBase
 {
     public override TextDocumentAttributes GetTextDocumentAttributes(DocumentUri uri) => new(uri, "expressif");
 
@@ -63,6 +67,10 @@ public sealed class TextDocumentSyncHandler(IDocumentStore documents, ILanguageS
             Version = document.Version,
             Diagnostics = document.SyntaxErrors
                 .Select(error => SyntaxDiagnosticMapper.Map(document.Text, error))
+                .Concat(document.SyntaxTree is null
+                    ? []
+                    : lifecycleDiagnostics.GetDiagnostics(document.SyntaxTree)
+                        .Select(diagnostic => SyntaxDiagnosticMapper.Map(document.Text, diagnostic)))
                 .ToArray()
         });
     }

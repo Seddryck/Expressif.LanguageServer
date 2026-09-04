@@ -31,7 +31,21 @@ public sealed class FunctionHoverService(IFunctionCatalog functions) : IFunction
             $"{metadata.Name}({parameters})",
             metadata.Description,
             call.Span.Start,
-            call.Name.Length);
+            call.Name.Length,
+            CreateLifecycleNotice(metadata));
+    }
+
+    private static string? CreateLifecycleNotice(FunctionMetadata function)
+    {
+        if (!function.Deprecated)
+            return null;
+
+        var notice = "Deprecated.";
+        if (!string.IsNullOrWhiteSpace(function.Replacement))
+            notice += $" Use {function.Replacement} instead.";
+        if (!string.IsNullOrWhiteSpace(function.Sunset))
+            notice += $"\nSunset: Expressif {function.Sunset}.";
+        return notice;
     }
 
     private static IEnumerable<SyntaxNode> DescendantsAndSelf(SyntaxNode node)

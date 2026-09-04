@@ -1,6 +1,8 @@
 using Expressif.LanguageServer.Handlers;
 using Expressif.LanguageServer.Core.Completion;
 using Expressif.LanguageServer.Core.Documents;
+using Expressif.LanguageServer.Core.Diagnostics;
+using Expressif.LanguageServer.Core.CodeActions;
 using Expressif.LanguageServer.Core.Functions;
 using Expressif.LanguageServer.Core.Hover;
 using Expressif.LanguageServer.Core.SignatureHelp;
@@ -32,12 +34,15 @@ public static class Program
                 services.AddSingleton<IFunctionHoverService, FunctionHoverService>();
                 services.AddSingleton<IFunctionSignatureHelpService, FunctionSignatureHelpService>();
                 services.AddSingleton<ISemanticTokenService, SemanticTokenService>();
+                services.AddSingleton<IFunctionLifecycleDiagnosticService, FunctionLifecycleDiagnosticService>();
+                services.AddSingleton<IFunctionCodeActionService, FunctionCodeActionService>();
             })
             .WithHandler<TextDocumentSyncHandler>()
             .WithHandler<CompletionHandler>()
             .WithHandler<HoverHandler>()
             .WithHandler<SignatureHelpHandler>()
-            .WithHandler<SemanticTokensHandler>());
+            .WithHandler<SemanticTokensHandler>()
+            .WithHandler<CodeActionHandler>());
 
         await server.WaitForExit;
     }

@@ -21,6 +21,20 @@ public sealed class ExpressifFunctionCatalogTests
     }
 
     [Test]
+    public void Functions_IncludePublicPredicatesAndTheirAliases()
+    {
+        var functions = new ExpressifFunctionCatalog().Functions;
+
+        var predicate = functions.Single(function => function.Name == "is-lower-case");
+        Assert.Multiple(() =>
+        {
+            Assert.That(predicate.Aliases, Does.Contain("lower-case"));
+            Assert.That(predicate.Category, Is.EqualTo("text"));
+            Assert.That(predicate.Description, Is.Not.Empty);
+        });
+    }
+
+    [Test]
     public void Functions_DeprecatedAppend_ExposesLifecycleMetadataAndUnsafeReplacement()
     {
         var function = new ExpressifFunctionCatalog().Functions.Single(item => item.Name == "append");

@@ -11,10 +11,11 @@ public sealed class DocumentFormatter : IDocumentFormatter
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(options);
 
-        if (document.SyntaxDocument is null || document.SyntaxErrors.Count > 0)
+        var syntaxDocument = GetSyntaxDocument(document);
+        if (syntaxDocument is null)
             return document.Text;
 
-        var layout = Layout.Create(document.SyntaxDocument);
+        var layout = Layout.Create(syntaxDocument);
         var tokens = Tokenize(document.Text, layout).ToArray();
         if (tokens.Length == 0)
             return document.Text;
@@ -23,6 +24,25 @@ public sealed class DocumentFormatter : IDocumentFormatter
         foreach (var token in tokens)
             writer.Write(token);
         return writer.Complete();
+    }
+
+    private static SourceFileSyntax? GetSyntaxDocument(DocumentSnapshot document)
+    {
+        if (document.SyntaxDocument is not null && document.SyntaxErrors.Count == 0)
+            return document.SyntaxDocument;
+
+        if (!document.Text.Contains("|#>", StringComparison.Ordinal))
+            return null;
+
+        var normalized = document.Text.Replace("|#>", "|  ", StringComparison.Ordinal);
+        try
+        {
+            return ExpressifSyntax.ParseDocument(normalized);
+        }
+        catch (ExpressifSyntaxException)
+        {
+            return null;
+        }
     }
 
     private static IEnumerable<FormatToken> Tokenize(string source, Layout layout)
@@ -35,6 +55,16 @@ public sealed class DocumentFormatter : IDocumentFormatter
             {
                 lineBreakBefore |= source[position] is '\r' or '\n';
                 position++;
+                continue;
+            }
+
+            var pipelineLength = GetPipelineOperatorLength(source, position, layout);
+            if (pipelineLength > 0)
+            {
+                yield return new(TokenKind.Pipeline, source.Substring(position, pipelineLength), position,
+                    lineBreakBefore);
+                position += pipelineLength;
+                lineBreakBefore = false;
                 continue;
             }
 
@@ -63,7 +93,6 @@ public sealed class DocumentFormatter : IDocumentFormatter
                 '(' or '{' or '[' => TokenKind.OpenDelimiter,
                 ')' or '}' or ']' => TokenKind.CloseDelimiter,
                 ',' => TokenKind.Comma,
-                '|' when layout.PipelineOperators.Contains(position) => TokenKind.Pipeline,
                 _ => TokenKind.Atom
             };
 
@@ -89,6 +118,16 @@ public sealed class DocumentFormatter : IDocumentFormatter
             yield return new(TokenKind.Atom, source[start..position], start, lineBreakBefore);
             lineBreakBefore = false;
         }
+    }
+
+    private static int GetPipelineOperatorLength(string source, int position, Layout layout)
+    {
+        if (!layout.PipelineOperators.Contains(position))
+            return 0;
+
+        if (source.AsSpan(position).StartsWith("|#>"))
+            return 3;
+        return source.AsSpan(position).StartsWith("|>") ? 2 : 1;
     }
 
     private static bool IsStructuralCharacter(char value)
@@ -136,11 +175,12 @@ public sealed class DocumentFormatter : IDocumentFormatter
             foreach (var root in DescendantsAndSelf(sourceFile).OfType<RootExpressionSyntax>())
             {
                 var stages = GetStages(root);
-                if (stages.Count < 2)
-                    continue;
-
-                var operators = new List<int>();
-                var multiline = false;
+                var operators = DescendantsAndSelf(root)
+                    .OfType<MapShorthandSyntax>()
+                    .Where(shorthand => shorthand.Text.StartsWith("|>", StringComparison.Ordinal))
+                    .Select(shorthand => shorthand.Span.Start)
+                    .ToList();
+                var multiline = operators.Any(position => HasLineBreakImmediatelyBefore(sourceFile.Text, position));
                 for (var index = 1; index < stages.Count; index++)
                 {
                     multiline |= ContainsStructuralLineBreak(sourceFile.Text,
@@ -165,6 +205,16 @@ public sealed class DocumentFormatter : IDocumentFormatter
                 sourceFile.Text, protectedSpans.Values, openDelimiters, closeDelimiters);
             return new(protectedSpans, pipelineOperators, multilinePipelineOperators, multilineDelimiters,
                 openDelimiters, closeDelimiters);
+        }
+
+        private static bool HasLineBreakImmediatelyBefore(string source, int position)
+        {
+            for (var index = position - 1; index >= 0 && char.IsWhiteSpace(source[index]); index--)
+            {
+                if (source[index] is '\r' or '\n')
+                    return true;
+            }
+            return false;
         }
 
         private static ProtectedSpan? ToProtectedSpan(SyntaxNode node) => node switch

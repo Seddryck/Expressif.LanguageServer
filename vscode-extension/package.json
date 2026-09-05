@@ -22,7 +22,8 @@
     "LSP"
   ],
   "activationEvents": [
-    "onLanguage:expressif"
+    "onLanguage:expressif",
+    "onCommand:expressif.runExpression"
   ],
   "main": "./dist/extension.js",
   "files": [
@@ -35,6 +36,38 @@
     "LICENSE"
   ],
   "contributes": {
+    "commands": [
+      {
+        "command": "expressif.runExpression",
+        "title": "Run Expression",
+        "category": "Expressif",
+        "icon": "$(play)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "expressif.runExpression",
+          "when": "editorLangId == expressif",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "expressif.runExpression",
+          "when": "editorLangId == expressif",
+          "group": "1_modification"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "expressif.runExpression",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorTextFocus && editorLangId == expressif"
+      }
+    ],
     "languages": [
       {
         "id": "expressif",

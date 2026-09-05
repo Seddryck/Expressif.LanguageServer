@@ -2,6 +2,7 @@ using Expressif.LanguageServer.Core.CodeActions;
 using Expressif.LanguageServer.Core.Completion;
 using Expressif.LanguageServer.Core.Diagnostics;
 using Expressif.LanguageServer.Core.Documents;
+using Expressif.LanguageServer.Core.Evaluation;
 using Expressif.LanguageServer.Core.Formatting;
 using Expressif.LanguageServer.Core.Functions;
 using Expressif.LanguageServer.Core.Hover;
@@ -30,6 +31,7 @@ public static class Program
             {
                 services.AddSingleton<ISyntaxService, SyntaxService>();
                 services.AddSingleton<IDocumentStore, DocumentStore>();
+                services.AddSingleton<IExpressionEvaluationService, ExpressionEvaluationService>();
                 services.AddSingleton<IFunctionCatalog, ExpressifFunctionCatalog>();
                 services.AddSingleton<ICompletionService, CompletionService>();
                 services.AddSingleton<IFunctionHoverService, FunctionHoverService>();
@@ -45,7 +47,8 @@ public static class Program
             .WithHandler<SignatureHelpHandler>()
             .WithHandler<SemanticTokensHandler>()
             .WithHandler<CodeActionHandler>()
-            .WithHandler<DocumentFormattingHandler>());
+            .WithHandler<DocumentFormattingHandler>()
+            .WithHandler<EvaluateExpressionHandler>());
 
         await server.WaitForExit;
     }

@@ -11,9 +11,16 @@ import {
 
 let client: LanguageClient | undefined;
 
+interface EvaluationResult {
+  succeeded: boolean;
+  value?: string;
+  error?: string;
+}
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const outputChannel = vscode.window.createOutputChannel('Expressif Language Server');
-  context.subscriptions.push(outputChannel);
+  const evaluationChannel = vscode.window.createOutputChannel('Expressif Evaluation');
+  context.subscriptions.push(outputChannel, evaluationChannel);
 
   const executable = resolveServerExecutable(context);
   const serverOptions: ServerOptions = {
@@ -34,6 +41,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   context.subscriptions.push(client);
+  context.subscriptions.push(vscode.commands.registerCommand(
+    'expressif.runExpression',
+    () => runExpression(evaluationChannel)
+  ));
   outputChannel.appendLine(`Starting ${executable.command}`);
 
   try {
@@ -41,6 +52,58 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   } catch (error) {
     outputChannel.show(true);
     throw error;
+  }
+}
+
+async function runExpression(outputChannel: vscode.OutputChannel): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || editor.document.languageId !== 'expressif') {
+    await vscode.window.showErrorMessage('Open an Expressif document to run an expression.');
+    return;
+  }
+
+  const expression = editor.selection.isEmpty
+    ? editor.document.getText()
+    : editor.document.getText(editor.selection);
+  if (!expression.trim()) {
+    await vscode.window.showErrorMessage('The expression is empty.');
+    return;
+  }
+
+  const input = await vscode.window.showInputBox({
+    title: 'Run Expressif Expression',
+    prompt: 'Enter an Expressif value to pass to the expression',
+    placeHolder: 'Examples: 42, "text", {name := "Ada"}, {1, 2, 3}',
+    value: 'null',
+    ignoreFocusOut: true
+  });
+  if (input === undefined) {
+    return;
+  }
+
+  if (!client) {
+    await vscode.window.showErrorMessage('Expressif Language Server is not running.');
+    return;
+  }
+
+  try {
+    const result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
+      command: 'expressif.evaluateExpression',
+      arguments: [expression, input]
+    });
+    if (!result.succeeded) {
+      await vscode.window.showErrorMessage(`Expressif evaluation failed: ${result.error ?? 'Unknown error.'}`);
+      return;
+    }
+
+    outputChannel.appendLine(`> ${expression.trim()}`);
+    outputChannel.appendLine(`Input: ${input}`);
+    outputChannel.appendLine(`Result: ${result.value ?? ''}`);
+    outputChannel.appendLine('');
+    outputChannel.show(true);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await vscode.window.showErrorMessage(`Expressif evaluation failed: ${message}`);
   }
 }
 

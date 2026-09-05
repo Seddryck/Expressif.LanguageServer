@@ -2,6 +2,10 @@
 
 This extension is a thin client for `Expressif.LanguageServer`. It registers `.expressif` files and forwards editor activity to the server over the Language Server Protocol. Parsing and every language feature remain in the server.
 
+## Run an expression
+
+Press `Ctrl+Enter` (`Cmd+Enter` on macOS), use the play button in the editor title, or run **Expressif: Run Expression** from the Command Palette. The command evaluates the current selection, or the whole document when nothing is selected, after prompting for an Expressif input value. Results appear in the **Expressif Evaluation** output channel.
+
 ## Development
 
 Prerequisites are Node.js, npm, the .NET 10 SDK, and VS Code.

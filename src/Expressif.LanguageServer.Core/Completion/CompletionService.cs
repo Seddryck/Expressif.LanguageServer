@@ -23,6 +23,7 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
 
         var prefix = text[prefixStart..cursorOffset];
         var pipelineOperator = FindPrecedingPipelineOperator(text, prefixStart);
+        var hasOpeningParenthesis = HasOpeningParenthesis(text, tokenEnd);
         var probeText = pipelineOperator?.Length == 2
             ? string.Concat(
                 text.AsSpan(0, pipelineOperator.Value.Start + 1),
@@ -30,14 +31,14 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
                 ProbeName,
                 text.AsSpan(tokenEnd))
             : string.Concat(text.AsSpan(0, prefixStart), ProbeName, text.AsSpan(tokenEnd));
-        if (!ProbeIsFunction(probeText))
+        if (!ProbeIsFunction(probeText) &&
+            (!hasOpeningParenthesis || !ProbeIsFunction($"{probeText})")))
             return [];
 
         var needsLeadingSpace = pipelineOperator is { } precedingOperator
             && precedingOperator.Start + precedingOperator.Length == prefixStart;
         var replacementStart = needsLeadingSpace ? cursorOffset : prefixStart;
         var replacementLength = needsLeadingSpace ? tokenEnd - cursorOffset : tokenEnd - prefixStart;
-
         return functions.Functions
             .SelectMany(function => new[]
                 {
@@ -61,7 +62,13 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
                 function.Description,
                 function.Deprecated,
                 function.Replacement,
-                function.Sunset);
+                function.Sunset,
+                hasOpeningParenthesis
+                    ? null
+                    : function.Parameters
+                        .Where(parameter => !parameter.Optional || parameter.Variadic)
+                        .Select(parameter => parameter.Name)
+                        .ToArray());
     }
 
     private static bool ProbeIsFunction(string probeText)
@@ -89,6 +96,14 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
 
     private static bool IsFunctionNameCharacter(char character)
         => char.IsAsciiLetterOrDigit(character) || character is '-' or '_';
+
+    private static bool HasOpeningParenthesis(string text, int position)
+    {
+        while (position < text.Length && char.IsWhiteSpace(text[position]))
+            position++;
+
+        return position < text.Length && text[position] == '(';
+    }
 
     private static (int Start, int Length)? FindPrecedingPipelineOperator(string text, int position)
     {

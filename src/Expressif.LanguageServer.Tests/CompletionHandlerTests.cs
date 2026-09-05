@@ -76,4 +76,62 @@ public sealed class CompletionHandlerTests
                 Is.EqualTo("Appends text.\n\n**Deprecated.** Use `suffix` instead. Sunset: Expressif 3.0."));
         });
     }
+
+    [Test]
+    public async Task Handle_ParameterizedSuggestion_FormatsSnippetAndReplacementRangeAsync()
+    {
+        var (documents, uri) = CreateDocument("@foo | text-to-pad-r");
+        var completions = new Mock<ICompletionService>();
+        completions.Setup(service => service.GetCompletions("@foo | text-to-pad-r", 20))
+            .Returns([new CompletionSuggestion(
+                "text-to-pad-right", "text-to-pad-right", false, 7, 13,
+                SnippetParameters: ["length", "character"])]);
+
+        var item = (await new CompletionHandler(documents, completions.Object).Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier { Uri = uri },
+            Position = new Position(0, 20)
+        }, CancellationToken.None)).Single();
+
+        var edit = item.TextEdit?.TextEdit;
+        Assert.Multiple(() =>
+        {
+            Assert.That(item.InsertTextFormat, Is.EqualTo(InsertTextFormat.Snippet));
+            Assert.That(edit?.NewText, Is.EqualTo("text-to-pad-right(${1:length}, ${2:character})"));
+            Assert.That(edit?.Range.Start, Is.EqualTo(new Position(0, 7)));
+            Assert.That(edit?.Range.End, Is.EqualTo(new Position(0, 20)));
+        });
+    }
+
+    [Test]
+    public async Task Handle_PlainNameSuggestion_DoesNotProduceSnippetAsync()
+    {
+        var (documents, uri) = CreateDocument("@foo | pad(");
+        var completions = new Mock<ICompletionService>();
+        completions.Setup(service => service.GetCompletions("@foo | pad(", 10))
+            .Returns([new CompletionSuggestion("pad-right", "pad-right", true, 7, 3)]);
+
+        var item = (await new CompletionHandler(documents, completions.Object).Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier { Uri = uri },
+            Position = new Position(0, 10)
+        }, CancellationToken.None)).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(item.InsertTextFormat, Is.EqualTo(InsertTextFormat.PlainText));
+            Assert.That(item.TextEdit?.TextEdit?.NewText, Is.EqualTo("pad-right"));
+        });
+    }
+
+    private static (DocumentStore Documents, DocumentUri Uri) CreateDocument(string text)
+    {
+        var syntax = new Mock<ISyntaxService>();
+        syntax.Setup(service => service.Parse(It.IsAny<string>()))
+            .Returns(new SyntaxParseResult(null, []));
+        var documents = new DocumentStore(syntax.Object);
+        var uri = DocumentUri.FromFileSystemPath("/workspace/example.expr");
+        documents.Open(uri.ToUri(), text, 1);
+        return (documents, uri);
+    }
 }

@@ -127,6 +127,75 @@ public sealed class CompletionServiceTests
         });
     }
 
+    [Test]
+    public void GetCompletions_RequiredParameters_AreIncludedInSnippetOrder()
+    {
+        var service = CreateService(
+            new FunctionMetadata("pad-right", [],
+            [
+                new("length", false, "Length."),
+                new("character", false, "Character.")
+            ], "Pads text.", "Text"));
+
+        var suggestion = service.GetCompletions("pad", 3).Single();
+
+        Assert.That(suggestion.SnippetParameters, Is.EqualTo(new[] { "length", "character" }));
+    }
+
+    [Test]
+    public void GetCompletions_OptionalParameters_AreOmittedFromPrimarySnippet()
+    {
+        var service = CreateService(
+            new FunctionMetadata("token", [],
+            [
+                new("index", false, "Index."),
+                new("separator", true, "Separator.")
+            ], "Gets a token.", "Text"));
+
+        var suggestion = service.GetCompletions("tok", 3).Single();
+
+        Assert.That(suggestion.SnippetParameters, Is.EqualTo(new[] { "index" }));
+    }
+
+    [Test]
+    public void GetCompletions_VariadicParameter_ReceivesOneSnippetPlaceholder()
+    {
+        var service = CreateService(
+            new FunctionMetadata("concat", [],
+            [
+                new("value", false, "Value."),
+                new("values", true, "Additional values.", true, 0)
+            ], "Concatenates values.", "Text"));
+
+        var suggestion = service.GetCompletions("con", 3).Single();
+
+        Assert.That(suggestion.SnippetParameters, Is.EqualTo(new[] { "value", "values" }));
+    }
+
+    [Test]
+    public void GetCompletions_ZeroArgumentFunction_HasNoSnippetParameters()
+    {
+        var suggestion = service.GetCompletions("upp", 3).Single(item => item.Label == "upper");
+
+        Assert.That(suggestion.SnippetParameters, Is.Empty);
+    }
+
+    [TestCase("@foo | pad(")]
+    [TestCase("@foo | pad  (")]
+    public void GetCompletions_OpeningParenthesisAlreadyPresent_UsesPlainName(string text)
+    {
+        var service = CreateService(
+            new FunctionMetadata("pad-right", [], [new("length", false, "Length.")], "Pads text.", "Text"));
+        var cursor = text.IndexOf("pad", StringComparison.Ordinal) + 3;
+
+        var suggestion = service.GetCompletions(text, cursor).Single();
+
+        Assert.That(suggestion.SnippetParameters, Is.Null);
+    }
+
+    private static CompletionService CreateService(params FunctionMetadata[] functions)
+        => new(new TestFunctionCatalog(functions));
+
     private sealed class TestFunctionCatalog(IReadOnlyList<FunctionMetadata> functions) : IFunctionCatalog
     {
         public IReadOnlyList<FunctionMetadata> Functions { get; } = functions;

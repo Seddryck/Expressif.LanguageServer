@@ -1,4 +1,5 @@
 using Expressif.Functions.Introspection;
+using Expressif.Predicates.Introspection;
 
 namespace Expressif.LanguageServer.Core.Functions;
 
@@ -13,7 +14,7 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
             .Where(function => function.IsPublic)
             .ToArray();
 
-        return descriptions
+        var functions = descriptions
             .Select(function => new FunctionMetadata(
                 function.Name,
                 function.Aliases.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
@@ -29,6 +30,26 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
                 function.Replacement,
                 function.Sunset,
                 HasSafeDirectReplacement(function)))
+            .ToArray();
+
+        var predicates = new PredicateIntrospector()
+            .Describe()
+            .Where(predicate => predicate.IsPublic)
+            .Select(predicate => new FunctionMetadata(
+                predicate.Name,
+                predicate.Aliases.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
+                predicate.Parameters.Select(parameter => new FunctionParameterMetadata(
+                    parameter.Name,
+                    parameter.Optional,
+                    parameter.Summary,
+                    parameter.Variadic,
+                    parameter.MinimumCardinality)).ToArray(),
+                predicate.Summary,
+                predicate.Scope))
+            .ToArray();
+
+        return functions
+            .Concat(predicates)
             .OrderBy(function => function.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 

@@ -43,6 +43,21 @@ public sealed class CompletionServiceTests
         Assert.That(result.Select(item => item.Label), Does.Contain("text-to-upper"));
     }
 
+    [Test]
+    public void GetCompletions_EmptyPipelinePosition_IncludesPredicatesAsFunctions()
+    {
+        const string text = "@foo | ";
+        var service = new CompletionService(new ExpressifFunctionCatalog());
+
+        var result = service.GetCompletions(text, text.Length);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Select(item => item.Label), Does.Contain("is-lower-case"));
+            Assert.That(result.Select(item => item.Label), Does.Contain("lower-case"));
+        });
+    }
+
     [TestCase("@foo |")]
     [TestCase("@foo |>")]
     public void GetCompletions_AdjacentToPipelineOperator_InsertsLeadingSpace(string text)

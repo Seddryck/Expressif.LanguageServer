@@ -37,6 +37,7 @@ public static class Program
                 services.AddSingleton<IFunctionHoverService, FunctionHoverService>();
                 services.AddSingleton<IFunctionSignatureHelpService, FunctionSignatureHelpService>();
                 services.AddSingleton<ISemanticTokenService, SemanticTokenService>();
+                services.AddSingleton<IFunctionCallDiagnosticService, FunctionCallDiagnosticService>();
                 services.AddSingleton<IFunctionLifecycleDiagnosticService, FunctionLifecycleDiagnosticService>();
                 services.AddSingleton<IFunctionCodeActionService, FunctionCodeActionService>();
                 services.AddSingleton<IDocumentFormatter, DocumentFormatter>();

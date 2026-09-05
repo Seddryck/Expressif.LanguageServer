@@ -37,6 +37,19 @@ internal static class SyntaxDiagnosticMapper
         };
     }
 
+    public static Diagnostic Map(string source, FunctionCallDiagnostic diagnostic)
+    {
+        return new Diagnostic
+        {
+            Message = diagnostic.Message,
+            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                ToPosition(source, diagnostic.Start),
+                ToPosition(source, diagnostic.Start + diagnostic.Length)),
+            Severity = DiagnosticSeverity.Error,
+            Source = "expressif"
+        };
+    }
+
     private static (int Start, int End) GetUsefulTextRange(string source, SourceSpan span)
     {
         var bytes = Encoding.UTF8.GetBytes(source);

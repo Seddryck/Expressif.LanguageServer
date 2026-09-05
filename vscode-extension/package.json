@@ -43,7 +43,8 @@
           "expressif"
         ],
         "extensions": [
-          ".expressif"
+          ".expressif",
+          ".expr"
         ],
         "configuration": "./language-configuration.json"
       }

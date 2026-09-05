@@ -10,6 +10,17 @@ import {
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient | undefined;
+let previousInput: EvaluationInput | undefined;
+let lastDataEditor: vscode.TextEditor | undefined;
+
+interface EvaluationInput {
+  value?: string;
+  description: string;
+}
+
+interface EvaluationInputQuickPickItem extends vscode.QuickPickItem {
+  inputKind: 'none' | 'literal' | 'file' | 'editor' | 'selection' | 'previous';
+}
 
 interface EvaluationResult {
   succeeded: boolean;
@@ -22,6 +33,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const outputChannel = vscode.window.createOutputChannel('Expressif Language Server');
   const evaluationChannel = vscode.window.createOutputChannel('Expressif Evaluation');
   context.subscriptions.push(outputChannel, evaluationChannel);
+  rememberDataEditor(vscode.window.activeTextEditor);
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(rememberDataEditor));
 
   const executable = resolveServerExecutable(context);
   const serverOptions: ServerOptions = {
@@ -77,36 +90,33 @@ async function runExpression(outputChannel: vscode.OutputChannel): Promise<void>
   }
 
   try {
-    let input: string | undefined;
-    let result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
+    const selectedInput = await selectEvaluationInput(editor);
+    if (!selectedInput) {
+      return;
+    }
+
+    const result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
       command: 'expressif.evaluateExpression',
-      arguments: [expression]
+      arguments: [expression, selectedInput.value]
     });
     if (result.requiresInput) {
-      input = await vscode.window.showInputBox({
-        title: 'Run Expressif Expression',
-        prompt: 'Enter an Expressif value to pass to the expression',
-        placeHolder: 'Examples: 42, "text", {name := "Ada"}, {1, 2, 3}',
-        value: '#null',
-        ignoreFocusOut: true
-      });
-      if (input === undefined) {
-        return;
-      }
-
-      result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
-        command: 'expressif.evaluateExpression',
-        arguments: [expression, input]
-      });
+      await vscode.window.showErrorMessage(
+        'This expression requires input. Run it again and choose an input source.'
+      );
+      return;
     }
     if (!result.succeeded) {
       await vscode.window.showErrorMessage(`Expressif evaluation failed: ${result.error ?? 'Unknown error.'}`);
       return;
     }
 
+    if (selectedInput.value !== undefined) {
+      previousInput = selectedInput;
+    }
+
     outputChannel.appendLine(`> ${expression.trim()}`);
-    if (input !== undefined) {
-      outputChannel.appendLine(`Input: ${input}`);
+    if (selectedInput.value !== undefined) {
+      outputChannel.appendLine(`Input (${selectedInput.description}): ${selectedInput.value}`);
     }
     outputChannel.appendLine(`Result: ${result.value ?? ''}`);
     outputChannel.appendLine('');
@@ -115,6 +125,120 @@ async function runExpression(outputChannel: vscode.OutputChannel): Promise<void>
     const message = error instanceof Error ? error.message : String(error);
     await vscode.window.showErrorMessage(`Expressif evaluation failed: ${message}`);
   }
+}
+
+async function selectEvaluationInput(
+  expressionEditor: vscode.TextEditor
+): Promise<EvaluationInput | undefined> {
+  const items: EvaluationInputQuickPickItem[] = [
+    { label: 'No input', inputKind: 'none' },
+    { label: 'Enter a literal value', inputKind: 'literal' },
+    { label: 'Select a JSON or CSV file', inputKind: 'file' },
+    { label: 'Use the active JSON/CSV editor', inputKind: 'editor' },
+    { label: 'Use the current selection', inputKind: 'selection' },
+    {
+      label: 'Reuse the previous input',
+      description: previousInput ? previousInput.description : 'No previous input',
+      inputKind: 'previous'
+    }
+  ];
+
+  while (true) {
+    const choice = await vscode.window.showQuickPick(items, {
+      title: 'Run Expressif Expression',
+      placeHolder: 'Choose the input for this evaluation',
+      ignoreFocusOut: true
+    });
+    if (!choice) {
+      return undefined;
+    }
+
+    switch (choice.inputKind) {
+      case 'none':
+        return { value: undefined, description: 'none' };
+      case 'literal': {
+        const value = await vscode.window.showInputBox({
+          title: 'Run Expressif Expression',
+          prompt: 'Enter an Expressif literal value',
+          placeHolder: 'Examples: 42, "text", {name := "Ada"}, {1, 2, 3}',
+          value: '#null',
+          ignoreFocusOut: true
+        });
+        return value === undefined ? undefined : { value, description: 'literal' };
+      }
+      case 'file': {
+        const selected = await vscode.window.showOpenDialog({
+          title: 'Select evaluation input',
+          canSelectMany: false,
+          canSelectFiles: true,
+          canSelectFolders: false,
+          filters: { 'JSON or CSV': ['json', 'csv'] },
+          openLabel: 'Use as input'
+        });
+        if (!selected?.[0]) {
+          return undefined;
+        }
+        const bytes = await vscode.workspace.fs.readFile(selected[0]);
+        return {
+          value: new TextDecoder().decode(bytes),
+          description: path.basename(selected[0].fsPath)
+        };
+      }
+      case 'editor': {
+        const dataEditor = findDataEditor(expressionEditor);
+        if (dataEditor) {
+          return {
+            value: dataEditor.document.getText(),
+            description: path.basename(dataEditor.document.fileName)
+          };
+        }
+        await vscode.window.showWarningMessage('No JSON or CSV editor is currently open.');
+        break;
+      }
+      case 'selection': {
+        const dataEditor = findDataEditor(expressionEditor);
+        if (dataEditor && !dataEditor.selection.isEmpty) {
+          return {
+            value: dataEditor.document.getText(dataEditor.selection),
+            description: `selection from ${path.basename(dataEditor.document.fileName)}`
+          };
+        }
+        await vscode.window.showWarningMessage(
+          'There is no current selection in an open JSON or CSV editor.'
+        );
+        break;
+      }
+      case 'previous':
+        if (previousInput) {
+          return previousInput;
+        }
+        await vscode.window.showWarningMessage('There is no previous evaluation input to reuse.');
+        break;
+    }
+  }
+}
+
+function findDataEditor(expressionEditor: vscode.TextEditor): vscode.TextEditor | undefined {
+  if (lastDataEditor && lastDataEditor !== expressionEditor && isJsonOrCsv(lastDataEditor.document)) {
+    return lastDataEditor;
+  }
+  return vscode.window.visibleTextEditors.find(editor =>
+    editor !== expressionEditor && isJsonOrCsv(editor.document)
+  );
+}
+
+function rememberDataEditor(editor: vscode.TextEditor | undefined): void {
+  if (editor && isJsonOrCsv(editor.document)) {
+    lastDataEditor = editor;
+  }
+}
+
+function isJsonOrCsv(document: vscode.TextDocument): boolean {
+  const extension = path.extname(document.fileName).toLowerCase();
+  return document.languageId === 'json'
+    || document.languageId === 'jsonc'
+    || extension === '.json'
+    || extension === '.csv';
 }
 
 export async function deactivate(): Promise<void> {

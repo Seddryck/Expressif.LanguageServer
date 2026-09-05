@@ -13,6 +13,7 @@ namespace Expressif.LanguageServer.Handlers;
 
 public sealed class TextDocumentSyncHandler(
     IDocumentStore documents,
+    IFunctionCallDiagnosticService functionCallDiagnostics,
     IFunctionLifecycleDiagnosticService lifecycleDiagnostics,
     ILanguageServerFacade server) : TextDocumentSyncHandlerBase
 {
@@ -69,8 +70,10 @@ public sealed class TextDocumentSyncHandler(
                 .Select(error => SyntaxDiagnosticMapper.Map(document.Text, error))
                 .Concat(document.SyntaxTree is null
                     ? []
-                    : lifecycleDiagnostics.GetDiagnostics(document.SyntaxTree)
-                        .Select(diagnostic => SyntaxDiagnosticMapper.Map(document.Text, diagnostic)))
+                    : functionCallDiagnostics.GetDiagnostics(document.SyntaxTree)
+                        .Select(diagnostic => SyntaxDiagnosticMapper.Map(document.Text, diagnostic))
+                        .Concat(lifecycleDiagnostics.GetDiagnostics(document.SyntaxTree)
+                            .Select(diagnostic => SyntaxDiagnosticMapper.Map(document.Text, diagnostic))))
                 .ToArray()
         });
     }

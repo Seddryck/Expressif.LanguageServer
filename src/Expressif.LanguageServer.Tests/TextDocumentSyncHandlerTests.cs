@@ -17,6 +17,7 @@ public sealed class TextDocumentSyncHandlerTests
 {
     private static readonly DocumentUri DocumentUri = DocumentUri.FromFileSystemPath("/workspace/example.expr");
     private Mock<ITextDocumentLanguageServer> textDocument = null!;
+    private Mock<IFunctionCallDiagnosticService> functionCallDiagnostics = null!;
     private Mock<IFunctionLifecycleDiagnosticService> lifecycleDiagnostics = null!;
     private TextDocumentSyncHandler handler = null!;
 
@@ -33,8 +34,14 @@ public sealed class TextDocumentSyncHandlerTests
         textDocument = new();
         var server = new Mock<ILanguageServerFacade>();
         server.SetupGet(facade => facade.TextDocument).Returns(textDocument.Object);
+        functionCallDiagnostics = new();
+        functionCallDiagnostics.Setup(service => service.GetDiagnostics(It.IsAny<RootExpressionSyntax>()))
+            .Returns([]);
         lifecycleDiagnostics = new();
-        handler = new(new DocumentStore(syntax.Object), lifecycleDiagnostics.Object, server.Object);
+        lifecycleDiagnostics.Setup(service => service.GetDiagnostics(It.IsAny<RootExpressionSyntax>()))
+            .Returns([]);
+        handler = new(new DocumentStore(syntax.Object), functionCallDiagnostics.Object,
+            lifecycleDiagnostics.Object, server.Object);
     }
 
     [Test]
@@ -112,7 +119,7 @@ public sealed class TextDocumentSyncHandlerTests
         lifecycleDiagnostics.Setup(service => service.GetDiagnostics(syntaxTree))
             .Returns([new FunctionLifecycleDiagnostic(
                 "append", "Function 'append' is deprecated.", 0, 6)]);
-        handler = new(documents, lifecycleDiagnostics.Object,
+        handler = new(documents, functionCallDiagnostics.Object, lifecycleDiagnostics.Object,
             Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object));
 
         await handler.Handle(new DidOpenTextDocumentParams
@@ -133,6 +140,40 @@ public sealed class TextDocumentSyncHandlerTests
             Assert.That(diagnostic.Tags, Does.Contain(DiagnosticTag.Deprecated));
             Assert.That(diagnostic.Range.Start, Is.EqualTo(new Position(0, 0)));
             Assert.That(diagnostic.Range.End, Is.EqualTo(new Position(0, 6)));
+        });
+    }
+
+    [Test]
+    public async Task Open_InvalidFunctionCall_PublishesErrorDiagnosticAsync()
+    {
+        var syntaxDocument = Expressif.Syntax.ExpressifSyntax.ParseDocument("unknown()");
+        var syntax = new Mock<ISyntaxService>();
+        syntax.Setup(service => service.Parse("unknown()"))
+            .Returns(new SyntaxParseResult(syntaxDocument, []));
+        var documents = new DocumentStore(syntax.Object);
+        functionCallDiagnostics.Setup(service => service.GetDiagnostics(syntaxDocument.Expression))
+            .Returns([new FunctionCallDiagnostic("Unknown function 'unknown'.", 0, 7)]);
+        handler = new(documents, functionCallDiagnostics.Object, lifecycleDiagnostics.Object,
+            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object));
+
+        await handler.Handle(new DidOpenTextDocumentParams
+        {
+            TextDocument = new TextDocumentItem
+            {
+                Uri = DocumentUri,
+                LanguageId = "expressif",
+                Version = 1,
+                Text = "unknown()"
+            }
+        }, CancellationToken.None);
+
+        var diagnostic = PublishedDiagnostics().Single().Diagnostics.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Message, Is.EqualTo("Unknown function 'unknown'."));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.Range, Is.EqualTo(
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(0, 0, 0, 7)));
         });
     }
 

@@ -6,12 +6,17 @@ namespace Expressif.LanguageServer.Core.Completion;
 public sealed class CompletionService(IFunctionCatalog functions) : ICompletionService
 {
     private const string ProbeName = "expressif-completion-probe";
+    private const string FieldProbeName = "expressif_field_completion_probe";
 
     public IReadOnlyList<CompletionSuggestion> GetCompletions(string text, int cursorOffset)
     {
         ArgumentNullException.ThrowIfNull(text);
         if (cursorOffset < 0 || cursorOffset > text.Length)
             throw new ArgumentOutOfRangeException(nameof(cursorOffset));
+
+        var fieldCompletions = GetRecordFieldCompletions(text, cursorOffset);
+        if (fieldCompletions is not null)
+            return fieldCompletions;
 
         var prefixStart = cursorOffset;
         while (prefixStart > 0 && IsFunctionNameCharacter(text[prefixStart - 1]))
@@ -71,6 +76,74 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
                         .ToArray());
     }
 
+    private static IReadOnlyList<CompletionSuggestion>? GetRecordFieldCompletions(string text, int cursorOffset)
+    {
+        var prefixStart = cursorOffset;
+        while (prefixStart > 0 && IsFieldNameCharacter(text[prefixStart - 1]))
+            prefixStart--;
+
+        if (prefixStart == 0 || text[prefixStart - 1] != '.')
+            return null;
+
+        var tokenEnd = cursorOffset;
+        while (tokenEnd < text.Length && IsFieldNameCharacter(text[tokenEnd]))
+            tokenEnd++;
+
+        var prefix = text[prefixStart..cursorOffset];
+        var probeText = string.Concat(
+            text.AsSpan(0, prefixStart),
+            FieldProbeName,
+            text.AsSpan(tokenEnd));
+
+        RootExpressionSyntax syntax;
+        try
+        {
+            syntax = ExpressifSyntax.Parse(probeText);
+        }
+        catch (ExpressifSyntaxException)
+        {
+            return [];
+        }
+
+        var access = DescendantsAndSelf(syntax)
+            .OfType<RecordAccessSyntax>()
+            .FirstOrDefault(candidate => candidate.Fields.Any(field =>
+                field.IsNamed && string.Equals(field.Name, FieldProbeName, StringComparison.Ordinal)));
+        if (access is null)
+            return [];
+
+        var record = DescendantsAndSelf(syntax)
+            .OfType<FunctionCallSyntax>()
+            .Where(call => call.Span.Start < access.Span.Start
+                && call.Name.Equals("record", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(call => call.Span.Start)
+            .FirstOrDefault();
+        if (record is null)
+            return [];
+
+        return record.Arguments
+            .OfType<NamedArgumentSyntax>()
+            .Select(argument => argument.Name.Value)
+            .Where(name => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .Select(name => CreateFieldSuggestion(name, prefixStart, tokenEnd))
+            .ToArray();
+    }
+
+    private static CompletionSuggestion CreateFieldSuggestion(string name, int prefixStart, int tokenEnd)
+    {
+        var supportsShorthand = IsShorthandFieldName(name);
+        return new(
+            name,
+            supportsShorthand ? name : $"field(\"{EscapeQuotedText(name)}\")",
+            true,
+            supportsShorthand ? prefixStart : prefixStart - 1,
+            tokenEnd - prefixStart + (supportsShorthand ? 0 : 1),
+            "Record field",
+            Kind: CompletionSuggestionKind.Field);
+    }
+
     private static bool ProbeIsFunction(string probeText)
     {
         try
@@ -96,6 +169,21 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
 
     private static bool IsFunctionNameCharacter(char character)
         => char.IsAsciiLetterOrDigit(character) || character is '-' or '_';
+
+    private static bool IsFieldNameCharacter(char character)
+        => char.IsAsciiLetterOrDigit(character) || character is '_' or '-' or '+';
+
+    private static bool IsShorthandFieldName(string name)
+        => name.Length > 0
+            && (char.IsAsciiLetter(name[0]) || name[0] == '_')
+            && name.Skip(1).All(IsFieldNameCharacter);
+
+    private static string EscapeQuotedText(string value)
+        => value.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal)
+            .Replace("\r", "\\r", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal)
+            .Replace("\t", "\\t", StringComparison.Ordinal);
 
     private static bool HasOpeningParenthesis(string text, int position)
     {

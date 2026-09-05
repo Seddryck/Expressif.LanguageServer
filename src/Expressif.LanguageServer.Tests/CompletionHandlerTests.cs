@@ -124,6 +124,29 @@ public sealed class CompletionHandlerTests
         });
     }
 
+    [Test]
+    public async Task Handle_RecordFieldSuggestion_UsesFieldCompletionItemAsync()
+    {
+        var (documents, uri) = CreateDocument("record(name := \"Alice\") |> .");
+        var completions = new Mock<ICompletionService>();
+        completions.Setup(service => service.GetCompletions("record(name := \"Alice\") |> .", 28))
+            .Returns([new CompletionSuggestion(
+                "name", "name", true, 28, 0, "Record field", Kind: CompletionSuggestionKind.Field)]);
+
+        var item = (await new CompletionHandler(documents, completions.Object).Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier { Uri = uri },
+            Position = new Position(0, 28)
+        }, CancellationToken.None)).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(item.Kind, Is.EqualTo(CompletionItemKind.Field));
+            Assert.That(item.Detail, Is.EqualTo("Expressif record field"));
+            Assert.That(item.TextEdit?.TextEdit?.NewText, Is.EqualTo("name"));
+        });
+    }
+
     private static (DocumentStore Documents, DocumentUri Uri) CreateDocument(string text)
     {
         var syntax = new Mock<ISyntaxService>();

@@ -193,6 +193,65 @@ public sealed class CompletionServiceTests
         Assert.That(suggestion.SnippetParameters, Is.Null);
     }
 
+    [Test]
+    public void GetCompletions_AfterPipelineRecordAccess_ReturnsDefinedRecordFields()
+    {
+        const string text = "record(name := \"Alice\", age := 30) |> upper |> .";
+
+        var result = service.GetCompletions(text, text.Length);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Select(item => item.Label), Is.EqualTo(new[] { "age", "name" }));
+            Assert.That(result.All(item => item.Kind == CompletionSuggestionKind.Field), Is.True);
+            Assert.That(result.All(item => item.ReplacementStart == text.Length), Is.True);
+            Assert.That(result.All(item => item.ReplacementLength == 0), Is.True);
+        });
+    }
+
+    [Test]
+    public void GetCompletions_RecordFieldPrefix_FiltersAndReplacesExistingFieldName()
+    {
+        const string text = "record(name := \"Alice\", nickname := \"Al\", age := 30) |> .nme";
+        var cursor = text.IndexOf("nme", StringComparison.Ordinal) + 1;
+
+        var result = service.GetCompletions(text, cursor);
+
+        var suggestion = result.Single(item => item.Label == "name");
+        Assert.Multiple(() =>
+        {
+            Assert.That(suggestion.InsertText, Is.EqualTo("name"));
+            Assert.That(suggestion.ReplacementStart, Is.EqualTo(text.IndexOf("nme", StringComparison.Ordinal)));
+            Assert.That(suggestion.ReplacementLength, Is.EqualTo(3));
+        });
+    }
+
+    [Test]
+    public void GetCompletions_RecordAccessWithoutUpstreamRecord_ReturnsNoFields()
+    {
+        const string text = "@customer |> upper |> .";
+
+        var result = service.GetCompletions(text, text.Length);
+
+        Assert.That(result, Is.Empty);
+    }
+
+    [Test]
+    public void GetCompletions_QuotedRecordField_ReplacesDotWithLongFormAccess()
+    {
+        const string text = "record(\"display name\" := \"Alice\") |> .";
+
+        var suggestion = service.GetCompletions(text, text.Length).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(suggestion.Label, Is.EqualTo("display name"));
+            Assert.That(suggestion.InsertText, Is.EqualTo("field(\"display name\")"));
+            Assert.That(suggestion.ReplacementStart, Is.EqualTo(text.Length - 1));
+            Assert.That(suggestion.ReplacementLength, Is.EqualTo(1));
+        });
+    }
+
     private static CompletionService CreateService(params FunctionMetadata[] functions)
         => new(new TestFunctionCatalog(functions));
 

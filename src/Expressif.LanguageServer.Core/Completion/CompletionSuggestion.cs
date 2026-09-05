@@ -9,4 +9,5 @@ public sealed record CompletionSuggestion(
     string Description = "",
     bool Deprecated = false,
     string? Replacement = null,
-    string? Sunset = null);
+    string? Sunset = null,
+    IReadOnlyList<string>? SnippetParameters = null);

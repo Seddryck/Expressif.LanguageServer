@@ -33,11 +33,14 @@ public sealed class CompletionHandler(IDocumentStore documents, ICompletionServi
                     : null,
                 TextEdit = new TextEdit
                 {
-                    NewText = suggestion.InsertText,
+                    NewText = CreateInsertText(suggestion),
                     Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
                         GetPosition(document.Text, suggestion.ReplacementStart),
                         GetPosition(document.Text, suggestion.ReplacementStart + suggestion.ReplacementLength))
                 },
+                InsertTextFormat = suggestion.SnippetParameters is { Count: > 0 }
+                    ? InsertTextFormat.Snippet
+                    : InsertTextFormat.PlainText,
                 Kind = CompletionItemKind.Function,
                 SortText = $"{(suggestion.Deprecated ? 1 : 0)}-{(suggestion.IsCanonical ? 0 : 1)}-{index:D5}"
             });
@@ -51,6 +54,21 @@ public sealed class CompletionHandler(IDocumentStore documents, ICompletionServi
             ResolveProvider = false,
             TriggerCharacters = new Container<string>("|", "-")
         };
+
+    private static string CreateInsertText(CompletionSuggestion suggestion)
+    {
+        if (suggestion.SnippetParameters is not { Count: > 0 } parameters)
+            return suggestion.InsertText;
+
+        var placeholders = parameters.Select((parameter, index) =>
+            $"${{{index + 1}:{EscapeSnippetPlaceholder(parameter)}}}");
+        return $"{suggestion.InsertText}({string.Join(", ", placeholders)})";
+    }
+
+    private static string EscapeSnippetPlaceholder(string value)
+        => value.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("$", "\\$", StringComparison.Ordinal)
+            .Replace("}", "\\}", StringComparison.Ordinal);
 
     private static string CreateDetail(CompletionSuggestion suggestion)
     {

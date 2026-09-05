@@ -13,7 +13,7 @@ public sealed class EvaluateExpressionHandler(
 
     public override Task<ExpressionEvaluationResult> Handle(
         string expression,
-        string input,
+        string? input,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

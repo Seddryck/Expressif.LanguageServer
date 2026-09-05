@@ -13,6 +13,7 @@ let client: LanguageClient | undefined;
 
 interface EvaluationResult {
   succeeded: boolean;
+  requiresInput: boolean;
   value?: string;
   error?: string;
 }
@@ -70,34 +71,43 @@ async function runExpression(outputChannel: vscode.OutputChannel): Promise<void>
     return;
   }
 
-  const input = await vscode.window.showInputBox({
-    title: 'Run Expressif Expression',
-    prompt: 'Enter an Expressif value to pass to the expression',
-    placeHolder: 'Examples: 42, "text", {name := "Ada"}, {1, 2, 3}',
-    value: 'null',
-    ignoreFocusOut: true
-  });
-  if (input === undefined) {
-    return;
-  }
-
   if (!client) {
     await vscode.window.showErrorMessage('Expressif Language Server is not running.');
     return;
   }
 
   try {
-    const result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
+    let input: string | undefined;
+    let result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
       command: 'expressif.evaluateExpression',
-      arguments: [expression, input]
+      arguments: [expression]
     });
+    if (result.requiresInput) {
+      input = await vscode.window.showInputBox({
+        title: 'Run Expressif Expression',
+        prompt: 'Enter an Expressif value to pass to the expression',
+        placeHolder: 'Examples: 42, "text", {name := "Ada"}, {1, 2, 3}',
+        value: '#null',
+        ignoreFocusOut: true
+      });
+      if (input === undefined) {
+        return;
+      }
+
+      result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
+        command: 'expressif.evaluateExpression',
+        arguments: [expression, input]
+      });
+    }
     if (!result.succeeded) {
       await vscode.window.showErrorMessage(`Expressif evaluation failed: ${result.error ?? 'Unknown error.'}`);
       return;
     }
 
     outputChannel.appendLine(`> ${expression.trim()}`);
-    outputChannel.appendLine(`Input: ${input}`);
+    if (input !== undefined) {
+      outputChannel.appendLine(`Input: ${input}`);
+    }
     outputChannel.appendLine(`Result: ${result.value ?? ''}`);
     outputChannel.appendLine('');
     outputChannel.show(true);

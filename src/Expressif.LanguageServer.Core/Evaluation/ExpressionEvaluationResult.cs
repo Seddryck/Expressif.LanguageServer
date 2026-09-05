@@ -1,7 +1,12 @@
 namespace Expressif.LanguageServer.Core.Evaluation;
 
-public sealed record ExpressionEvaluationResult(bool Succeeded, string? Value, string? Error)
+public sealed record ExpressionEvaluationResult(
+    bool Succeeded,
+    bool RequiresInput,
+    string? Value,
+    string? Error)
 {
-    public static ExpressionEvaluationResult Success(string value) => new(true, value, null);
-    public static ExpressionEvaluationResult Failure(string error) => new(false, null, error);
+    public static ExpressionEvaluationResult Success(string value) => new(true, false, value, null);
+    public static ExpressionEvaluationResult InputRequired() => new(false, true, null, null);
+    public static ExpressionEvaluationResult Failure(string error) => new(false, false, null, error);
 }

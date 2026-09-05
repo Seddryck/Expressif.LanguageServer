@@ -9,6 +9,34 @@ public sealed class ExpressionEvaluationServiceTests
     private readonly ExpressionEvaluationService service = new();
 
     [Test]
+    public void Evaluate_ClosedExpressionWithoutInput_ReturnsFormattedResult()
+    {
+        var result = service.Evaluate("{1, 2, 3} | sum");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.RequiresInput, Is.False);
+            Assert.That(result.Value, Is.EqualTo("6"));
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
+    public void Evaluate_OpenExpressionWithoutInput_RequestsInput()
+    {
+        var result = service.Evaluate("add(2)");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.RequiresInput, Is.True);
+            Assert.That(result.Value, Is.Null);
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
     public void Evaluate_ScalarInput_ReturnsFormattedResult()
     {
         var result = service.Evaluate("add(2)", "40");
@@ -16,6 +44,7 @@ public sealed class ExpressionEvaluationServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.RequiresInput, Is.False);
             Assert.That(result.Value, Is.EqualTo("42"));
             Assert.That(result.Error, Is.Null);
         });
@@ -42,6 +71,7 @@ public sealed class ExpressionEvaluationServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.RequiresInput, Is.False);
             Assert.That(result.Value, Is.Null);
             Assert.That(result.Error, Is.Not.Empty);
         });
@@ -55,6 +85,7 @@ public sealed class ExpressionEvaluationServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.RequiresInput, Is.False);
             Assert.That(result.Error, Is.EqualTo("The expression is empty."));
         });
     }

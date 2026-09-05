@@ -1,13 +1,14 @@
-using Expressif.LanguageServer.Handlers;
-using Expressif.LanguageServer.Core.Completion;
-using Expressif.LanguageServer.Core.Documents;
-using Expressif.LanguageServer.Core.Diagnostics;
 using Expressif.LanguageServer.Core.CodeActions;
+using Expressif.LanguageServer.Core.Completion;
+using Expressif.LanguageServer.Core.Diagnostics;
+using Expressif.LanguageServer.Core.Documents;
+using Expressif.LanguageServer.Core.Formatting;
 using Expressif.LanguageServer.Core.Functions;
 using Expressif.LanguageServer.Core.Hover;
-using Expressif.LanguageServer.Core.SignatureHelp;
 using Expressif.LanguageServer.Core.SemanticTokens;
+using Expressif.LanguageServer.Core.SignatureHelp;
 using Expressif.LanguageServer.Core.Syntax;
+using Expressif.LanguageServer.Handlers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OmniSharp.Extensions.LanguageServer.Server;
@@ -36,13 +37,15 @@ public static class Program
                 services.AddSingleton<ISemanticTokenService, SemanticTokenService>();
                 services.AddSingleton<IFunctionLifecycleDiagnosticService, FunctionLifecycleDiagnosticService>();
                 services.AddSingleton<IFunctionCodeActionService, FunctionCodeActionService>();
+                services.AddSingleton<IDocumentFormatter, DocumentFormatter>();
             })
             .WithHandler<TextDocumentSyncHandler>()
             .WithHandler<CompletionHandler>()
             .WithHandler<HoverHandler>()
             .WithHandler<SignatureHelpHandler>()
             .WithHandler<SemanticTokensHandler>()
-            .WithHandler<CodeActionHandler>());
+            .WithHandler<CodeActionHandler>()
+            .WithHandler<DocumentFormattingHandler>());
 
         await server.WaitForExit;
     }

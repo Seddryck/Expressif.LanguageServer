@@ -252,6 +252,38 @@ public sealed class CompletionServiceTests
         });
     }
 
+    [Test]
+    public void GetCompletions_InsideMapOverRecordArray_ReturnsCommonLiteralFields()
+    {
+        const string text = "{{names := \"John Doe\", age := 30}, {names := \"Michel Boiseaux\", age := 77}}"
+            + " |> map(.nam";
+
+        var result = service.GetCompletions(text, text.Length);
+
+        Assert.That(result.Select(item => item.Label), Is.EqualTo(new[] { "names" }));
+    }
+
+    [Test]
+    public void GetCompletions_InsideMapOverHeterogeneousRecordArray_ReturnsOnlyFieldsPresentInEveryRecord()
+    {
+        const string text = "{{name := \"John\", age := 30}, {name := \"Michel\", country := \"France\"}}"
+            + " |> map(.";
+
+        var result = service.GetCompletions(text, text.Length);
+
+        Assert.That(result.Select(item => item.Label), Is.EqualTo(new[] { "name" }));
+    }
+
+    [Test]
+    public void GetCompletions_InsideFilterOverRecordLiteral_ReturnsLiteralFields()
+    {
+        const string text = "{names := \"John Doe\", age := 30, country := \"USA\"} |> filter(.nam";
+
+        var result = service.GetCompletions(text, text.Length);
+
+        Assert.That(result.Select(item => item.Label), Is.EqualTo(new[] { "names" }));
+    }
+
     private static CompletionService CreateService(params FunctionMetadata[] functions)
         => new(new TestFunctionCatalog(functions));
 

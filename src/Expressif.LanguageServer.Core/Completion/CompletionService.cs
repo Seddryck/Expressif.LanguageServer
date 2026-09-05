@@ -90,10 +90,10 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
             tokenEnd++;
 
         var prefix = text[prefixStart..cursorOffset];
-        var probeText = string.Concat(
+        var probeText = CloseOpenParentheses(string.Concat(
             text.AsSpan(0, prefixStart),
             FieldProbeName,
-            text.AsSpan(tokenEnd));
+            text.AsSpan(tokenEnd)));
 
         RootExpressionSyntax syntax;
         try
@@ -118,17 +118,41 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
                 && call.Name.Equals("record", StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(call => call.Span.Start)
             .FirstOrDefault();
-        if (record is null)
+        var fieldNames = record is not null
+            ? record.Arguments.OfType<NamedArgumentSyntax>().Select(argument => argument.Name.Value)
+            : GetLiteralRecordFieldNames(syntax, access);
+        if (fieldNames is null)
             return [];
 
-        return record.Arguments
-            .OfType<NamedArgumentSyntax>()
-            .Select(argument => argument.Name.Value)
+        return fieldNames
             .Where(name => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .Select(name => CreateFieldSuggestion(name, prefixStart, tokenEnd))
             .ToArray();
+    }
+
+    private static IEnumerable<string>? GetLiteralRecordFieldNames(SyntaxNode syntax, RecordAccessSyntax access)
+    {
+        var candidates = DescendantsAndSelf(syntax)
+            .OfType<RecordLiteralSyntax>()
+            .Where(record => record.Span.Start < access.Span.Start)
+            .ToArray();
+        var records = candidates
+            .Where(record => !candidates.Any(other => !ReferenceEquals(other, record)
+                && other.Span.Start <= record.Span.Start
+                && other.Span.End >= record.Span.End))
+            .ToArray();
+        if (records.Length == 0)
+            return null;
+
+        var commonNames = records[0].Fields
+            .Select(field => field.Name.Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var record in records.Skip(1))
+            commonNames.IntersectWith(record.Fields.Select(field => field.Name.Value));
+
+        return commonNames;
     }
 
     private static CompletionSuggestion CreateFieldSuggestion(string name, int prefixStart, int tokenEnd)
@@ -184,6 +208,35 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
             .Replace("\r", "\\r", StringComparison.Ordinal)
             .Replace("\n", "\\n", StringComparison.Ordinal)
             .Replace("\t", "\\t", StringComparison.Ordinal);
+
+    private static string CloseOpenParentheses(string text)
+    {
+        var depth = 0;
+        var quote = '\0';
+        var escaped = false;
+        foreach (var character in text)
+        {
+            if (quote != '\0')
+            {
+                if (escaped)
+                    escaped = false;
+                else if (character == '\\')
+                    escaped = true;
+                else if (character == quote)
+                    quote = '\0';
+                continue;
+            }
+
+            if (character is '\'' or '"')
+                quote = character;
+            else if (character == '(')
+                depth++;
+            else if (character == ')' && depth > 0)
+                depth--;
+        }
+
+        return depth == 0 ? text : text + new string(')', depth);
+    }
 
     private static bool HasOpeningParenthesis(string text, int position)
     {

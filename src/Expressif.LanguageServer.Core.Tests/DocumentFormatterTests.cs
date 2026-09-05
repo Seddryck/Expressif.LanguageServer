@@ -26,6 +26,24 @@ public sealed class DocumentFormatterTests
         Assert.That(formatted, Is.EqualTo("10\r\n| add(5)\r\n| multiply(2)"));
     }
 
+    [TestCase("10|add(5)", "10 | add(5)")]
+    [TestCase("10|>add(5)", "10 |> add(5)")]
+    [TestCase("10|#>add(5)", "10 |#> add(5)")]
+    public void Format_PipelineOperator_NormalizesSpacing(string source, string expected)
+    {
+        Assert.That(Format(source), Is.EqualTo(expected));
+    }
+
+    [TestCase("|")]
+    [TestCase("|>")]
+    [TestCase("|#>")]
+    public void Format_MultilinePipeline_PlacesExtendedOperatorStagesOnTheirOwnLines(string pipelineOperator)
+    {
+        var formatted = Format($"10\n  {pipelineOperator}add(5){pipelineOperator} multiply(2)");
+
+        Assert.That(formatted, Is.EqualTo($"10\n{pipelineOperator} add(5)\n{pipelineOperator} multiply(2)"));
+    }
+
     [Test]
     public void Format_MultilineFunctionCall_IndentsArguments()
     {

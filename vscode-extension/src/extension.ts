@@ -12,10 +12,12 @@ import {
 let client: LanguageClient | undefined;
 let previousInput: EvaluationInput | undefined;
 let lastDataEditor: vscode.TextEditor | undefined;
+let lastExpressionEditor: vscode.TextEditor | undefined;
 
 interface EvaluationInput {
   value?: string;
   description: string;
+  format: 'Literal' | 'Json' | 'Csv';
 }
 
 interface EvaluationInputQuickPickItem extends vscode.QuickPickItem {
@@ -33,8 +35,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const outputChannel = vscode.window.createOutputChannel('Expressif Language Server');
   const evaluationChannel = vscode.window.createOutputChannel('Expressif Evaluation');
   context.subscriptions.push(outputChannel, evaluationChannel);
-  rememberDataEditor(vscode.window.activeTextEditor);
-  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(rememberDataEditor));
+  rememberActiveEditor(vscode.window.activeTextEditor);
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(rememberActiveEditor));
 
   const executable = resolveServerExecutable(context);
   const serverOptions: ServerOptions = {
@@ -70,15 +72,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 async function runExpression(outputChannel: vscode.OutputChannel): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor || editor.document.languageId !== 'expressif') {
+  const activeEditor = vscode.window.activeTextEditor;
+  const expressionEditor = activeEditor?.document.languageId === 'expressif'
+    ? activeEditor
+    : findExpressionEditor();
+  if (!expressionEditor) {
     await vscode.window.showErrorMessage('Open an Expressif document to run an expression.');
     return;
   }
 
-  const expression = editor.selection.isEmpty
-    ? editor.document.getText()
-    : editor.document.getText(editor.selection);
+  const expression = expressionEditor.selection.isEmpty
+    ? expressionEditor.document.getText()
+    : expressionEditor.document.getText(expressionEditor.selection);
   if (!expression.trim()) {
     await vscode.window.showErrorMessage('The expression is empty.');
     return;
@@ -90,14 +95,14 @@ async function runExpression(outputChannel: vscode.OutputChannel): Promise<void>
   }
 
   try {
-    const selectedInput = await selectEvaluationInput(editor);
+    const selectedInput = await selectEvaluationInput(expressionEditor);
     if (!selectedInput) {
       return;
     }
 
     const result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
       command: 'expressif.evaluateExpression',
-      arguments: [expression, selectedInput.value]
+      arguments: [expression, selectedInput.value, selectedInput.format]
     });
     if (result.requiresInput) {
       await vscode.window.showErrorMessage(
@@ -155,7 +160,7 @@ async function selectEvaluationInput(
 
     switch (choice.inputKind) {
       case 'none':
-        return { value: undefined, description: 'none' };
+        return { value: undefined, description: 'none', format: 'Literal' };
       case 'literal': {
         const value = await vscode.window.showInputBox({
           title: 'Run Expressif Expression',
@@ -164,7 +169,9 @@ async function selectEvaluationInput(
           value: '#null',
           ignoreFocusOut: true
         });
-        return value === undefined ? undefined : { value, description: 'literal' };
+        return value === undefined
+          ? undefined
+          : { value, description: 'literal', format: 'Literal' };
       }
       case 'file': {
         const selected = await vscode.window.showOpenDialog({
@@ -181,7 +188,8 @@ async function selectEvaluationInput(
         const bytes = await vscode.workspace.fs.readFile(selected[0]);
         return {
           value: new TextDecoder().decode(bytes),
-          description: path.basename(selected[0].fsPath)
+          description: path.basename(selected[0].fsPath),
+          format: inputFormat(selected[0].fsPath)
         };
       }
       case 'editor': {
@@ -189,7 +197,8 @@ async function selectEvaluationInput(
         if (dataEditor) {
           return {
             value: dataEditor.document.getText(),
-            description: path.basename(dataEditor.document.fileName)
+            description: path.basename(dataEditor.document.fileName),
+            format: inputFormatForDocument(dataEditor.document)
           };
         }
         await vscode.window.showWarningMessage('No JSON or CSV editor is currently open.');
@@ -200,7 +209,8 @@ async function selectEvaluationInput(
         if (dataEditor && !dataEditor.selection.isEmpty) {
           return {
             value: dataEditor.document.getText(dataEditor.selection),
-            description: `selection from ${path.basename(dataEditor.document.fileName)}`
+            description: `selection from ${path.basename(dataEditor.document.fileName)}`,
+            format: inputFormatForDocument(dataEditor.document)
           };
         }
         await vscode.window.showWarningMessage(
@@ -219,6 +229,10 @@ async function selectEvaluationInput(
 }
 
 function findDataEditor(expressionEditor: vscode.TextEditor): vscode.TextEditor | undefined {
+  const activeEditor = vscode.window.activeTextEditor;
+  if (activeEditor && activeEditor !== expressionEditor && isJsonOrCsv(activeEditor.document)) {
+    return activeEditor;
+  }
   if (lastDataEditor && lastDataEditor !== expressionEditor && isJsonOrCsv(lastDataEditor.document)) {
     return lastDataEditor;
   }
@@ -227,8 +241,20 @@ function findDataEditor(expressionEditor: vscode.TextEditor): vscode.TextEditor 
   );
 }
 
-function rememberDataEditor(editor: vscode.TextEditor | undefined): void {
-  if (editor && isJsonOrCsv(editor.document)) {
+function findExpressionEditor(): vscode.TextEditor | undefined {
+  if (lastExpressionEditor?.document.languageId === 'expressif') {
+    return lastExpressionEditor;
+  }
+  return vscode.window.visibleTextEditors.find(editor => editor.document.languageId === 'expressif');
+}
+
+function rememberActiveEditor(editor: vscode.TextEditor | undefined): void {
+  if (!editor) {
+    return;
+  }
+  if (editor.document.languageId === 'expressif') {
+    lastExpressionEditor = editor;
+  } else if (isJsonOrCsv(editor.document)) {
     lastDataEditor = editor;
   }
 }
@@ -239,6 +265,14 @@ function isJsonOrCsv(document: vscode.TextDocument): boolean {
     || document.languageId === 'jsonc'
     || extension === '.json'
     || extension === '.csv';
+}
+
+function inputFormat(fileName: string): 'Json' | 'Csv' {
+  return path.extname(fileName).toLowerCase() === '.csv' ? 'Csv' : 'Json';
+}
+
+function inputFormatForDocument(document: vscode.TextDocument): 'Json' | 'Csv' {
+  return document.languageId === 'csv' ? 'Csv' : inputFormat(document.fileName);
 }
 
 export async function deactivate(): Promise<void> {

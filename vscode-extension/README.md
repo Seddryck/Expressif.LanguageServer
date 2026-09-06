@@ -4,7 +4,7 @@ This extension is a thin client for `Expressif.LanguageServer`. It registers `.e
 
 ## Run an expression
 
-Press `Ctrl+Enter` (`Cmd+Enter` on macOS), use the play button in the editor title, or run **Expressif: Run Expression** from the Command Palette. The command evaluates the current selection, or the whole document when nothing is selected. Before evaluation, choose whether to use no input, enter a literal, select a JSON or CSV file, use an open JSON/CSV editor or its current selection, or reuse the previous input. Results appear in the **Expressif Evaluation** output channel.
+Press `Ctrl+Enter` (`Cmd+Enter` on macOS), use the play button in the editor title, or run **Expressif: Run Expression** from the Command Palette. The command evaluates the current selection, or the whole document when nothing is selected. Before evaluation, choose whether to use no input, enter a literal, select a JSON or CSV file, use an open JSON/CSV editor or its current selection, or reuse the previous input. To use the active JSON/CSV editor, select the expression once, focus the JSON/CSV editor, and invoke the command from the Command Palette; the extension remembers the most recently active Expressif editor. Results appear in the **Expressif Evaluation** output channel.
 
 ## Development
 

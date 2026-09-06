@@ -1,10 +1,11 @@
-using Expressif.Values;
-
 namespace Expressif.LanguageServer.Core.Evaluation;
 
 public sealed class ExpressionEvaluationService : IExpressionEvaluationService
 {
-    public ExpressionEvaluationResult Evaluate(string expression, string? input = null)
+    public ExpressionEvaluationResult Evaluate(
+        string expression,
+        string? input = null,
+        EvaluationInputFormat inputFormat = EvaluationInputFormat.Literal)
     {
         if (string.IsNullOrWhiteSpace(expression))
             return ExpressionEvaluationResult.Failure("The expression is empty.");
@@ -17,7 +18,7 @@ public sealed class ExpressionEvaluationService : IExpressionEvaluationService
                 return ExpressionEvaluationResult.Success(ValueFormatter.Format(closedResult));
             }
 
-            var value = new ParameterValueConverter().Parse(input);
+            var value = EvaluationInputParser.Parse(input, inputFormat);
             var result = Expression.Create(expression, new Context()).Evaluate(value);
             return ExpressionEvaluationResult.Success(ValueFormatter.Format(result));
         }

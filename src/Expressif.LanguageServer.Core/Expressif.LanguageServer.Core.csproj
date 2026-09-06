@@ -6,6 +6,7 @@
   <ItemGroup>
     <PackageReference Include="Expressif" Version="2.34.0" GeneratePathProperty="true" />
     <PackageReference Include="Expressif.Syntax" Version="0.35.0" />
+    <PackageReference Include="PocketCsvReader" Version="2.36.34" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(PkgExpressif)\lib\$(TargetFramework)\Expressif.xml"

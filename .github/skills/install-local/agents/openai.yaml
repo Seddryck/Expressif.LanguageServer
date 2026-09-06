@@ -1,0 +1,4 @@
+interface:
+  display_name: "Install local VSIX"
+  short_description: "Install a PR or release VSIX in VS Code Insiders"
+  default_prompt: "Install the Expressif Language Server VSIX from a pull request or release into VS Code Insiders."

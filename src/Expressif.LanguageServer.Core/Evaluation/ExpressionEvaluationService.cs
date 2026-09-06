@@ -1,3 +1,5 @@
+using Expressif.Values;
+
 namespace Expressif.LanguageServer.Core.Evaluation;
 
 public sealed class ExpressionEvaluationService : IExpressionEvaluationService

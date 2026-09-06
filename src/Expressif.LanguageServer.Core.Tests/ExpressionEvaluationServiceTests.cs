@@ -112,6 +112,22 @@ public sealed class ExpressionEvaluationServiceTests
     }
 
     [Test]
+    public void Evaluate_CsvInputWithLfLineEndings_ConvertsRowsToRecords()
+    {
+        var result = service.Evaluate(
+            "count",
+            "name,age\nAda,36\nGrace,85\n",
+            EvaluationInputFormat.Csv);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Value, Is.EqualTo("2"));
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
     public void Evaluate_InvalidJsonInput_ReturnsFailure()
     {
         var result = service.Evaluate("upper", "{", EvaluationInputFormat.Json);

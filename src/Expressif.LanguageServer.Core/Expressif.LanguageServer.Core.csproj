@@ -4,8 +4,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Expressif" Version="2.48.0" GeneratePathProperty="true" />
-    <PackageReference Include="Expressif.Serialization" Version="2.48.0" />
+    <PackageReference Include="Expressif" Version="2.51.0" GeneratePathProperty="true" />
+    <PackageReference Include="Expressif.Serialization" Version="2.51.0" />
     <PackageReference Include="Expressif.Syntax" Version="0.36.0" />
   </ItemGroup>
   <ItemGroup>

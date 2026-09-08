@@ -64,6 +64,83 @@ public sealed class ExpressionEvaluationServiceTests
     }
 
     [Test]
+    public void Evaluate_JsonRecordInput_ConvertsJsonValues()
+    {
+        var result = service.Evaluate(
+            ".name | upper",
+            """{"name":"Ada"}""",
+            EvaluationInputFormat.Json);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Value, Is.EqualTo("ADA"));
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
+    public void Evaluate_JsonArrayInput_ConvertsJsonValues()
+    {
+        var result = service.Evaluate(
+            "count",
+            """[{"name":"Ada"},{"name":"Grace"}]""",
+            EvaluationInputFormat.Json);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Value, Is.EqualTo("2"));
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
+    public void Evaluate_CsvInput_ConvertsRowsToRecords()
+    {
+        var result = service.Evaluate(
+            "count",
+            "name,age\r\nAda,36\r\nGrace,85\r\n",
+            EvaluationInputFormat.Csv);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Value, Is.EqualTo("2"));
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
+    public void Evaluate_CsvInputWithLfLineEndings_ConvertsRowsToRecords()
+    {
+        var result = service.Evaluate(
+            "count",
+            "name,age\nAda,36\nGrace,85\n",
+            EvaluationInputFormat.Csv);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Value, Is.EqualTo("2"));
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
+    public void Evaluate_InvalidJsonInput_ReturnsFailure()
+    {
+        var result = service.Evaluate("upper", "{", EvaluationInputFormat.Json);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.RequiresInput, Is.False);
+            Assert.That(result.Error, Is.Not.Empty);
+        });
+    }
+
+    [Test]
     public void Evaluate_InvalidExpression_ReturnsFailure()
     {
         var result = service.Evaluate("does-not-exist", "null");

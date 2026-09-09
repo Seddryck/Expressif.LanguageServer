@@ -77,6 +77,83 @@ public sealed class FunctionCallDiagnosticServiceTests
         Assert.That(service.GetDiagnostics(Parse("add()")), Has.Count.EqualTo(1));
     }
 
+    [TestCase("upper(1)", "upper", 0, 1)]
+    [TestCase("add(1, 2)", "add", 1, 2)]
+    [TestCase("ADD(1, 2)", "ADD", 1, 2)]
+    [TestCase("plus(1, 2)", "plus", 1, 2)]
+    [TestCase("add(1, 2, 3)", "add", 2, 3)]
+    public void GetDiagnostics_TooManyArguments_ReportsFunctionCall(
+        string source, string name, int maximum, int supplied)
+    {
+        FunctionParameterMetadata[] parameters = maximum switch
+        {
+            0 => [],
+            1 => [new("value", false, "Value.")],
+            _ => [new("value", false, "Value."), new("fallback", true, "Fallback.", false, 0)]
+        };
+        var service = CreateService(new FunctionMetadata(
+            maximum == 0 ? "upper" : "add", ["plus"], parameters, "Description.", "Test"));
+
+        var diagnostic = service.GetDiagnostics(Parse(source)).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Message, Is.EqualTo(
+                $"Function '{name}' accepts at most {maximum} argument{(maximum == 1 ? "" : "s")}, " +
+                $"but {supplied} argument{(supplied == 1 ? " was" : "s were")} provided."));
+            Assert.That(diagnostic.Start, Is.Zero);
+            Assert.That(diagnostic.Length, Is.EqualTo(source.Length));
+        });
+    }
+
+    [TestCase("add(1)")]
+    [TestCase("add(1, 2)")]
+    public void GetDiagnostics_WithinOptionalParameterLimit_ReturnsNoDiagnostic(string source)
+    {
+        var service = CreateService(new FunctionMetadata("add", [],
+            [new("value", false, "Value."), new("fallback", true, "Fallback.", false, 0)],
+            "Adds.", "Numeric"));
+
+        Assert.That(service.GetDiagnostics(Parse(source)), Is.Empty);
+    }
+
+    [TestCase(0)]
+    [TestCase(2)]
+    public void GetDiagnostics_VariadicArgumentsAboveParameterCount_ReturnsNoDiagnostic(int minimum)
+    {
+        var service = CreateService(new FunctionMetadata("coalesce", [],
+            [new("expressions", minimum == 0, "Candidates.", true, minimum)], "Coalesces.", "Flow"));
+
+        Assert.That(service.GetDiagnostics(Parse("coalesce(1, 2, 3, 4)")), Is.Empty);
+    }
+
+    [Test]
+    public void GetDiagnostics_NestedMultilineCall_ReportsOnlyExcessiveCall()
+    {
+        var service = CreateService(
+            new FunctionMetadata("coalesce", [], [new("expressions", false, "Candidates.", true)], "", ""),
+            new FunctionMetadata("upper", [], [], "", ""));
+        const string source = "coalesce(\n  upper(1),\n  2)";
+
+        var diagnostic = service.GetDiagnostics(Parse(source)).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Start, Is.EqualTo(source.IndexOf("upper", StringComparison.Ordinal)));
+            Assert.That(diagnostic.Length, Is.EqualTo("upper(1)".Length));
+        });
+    }
+
+    [TestCase("add(1, 2, 3)", 1)]
+    [TestCase("add(1, 2)", 0)]
+    [TestCase("add(1)", 0)]
+    public void GetDiagnostics_RealCatalog_RespectsMaximumArgumentCount(string source, int count)
+    {
+        var service = new FunctionCallDiagnosticService(new ExpressifFunctionCatalog());
+
+        Assert.That(service.GetDiagnostics(Parse(source)), Has.Count.EqualTo(count));
+    }
+
     private static FunctionCallDiagnosticService CreateService(params FunctionMetadata[] functions)
         => new(new TestFunctionCatalog(functions));
 

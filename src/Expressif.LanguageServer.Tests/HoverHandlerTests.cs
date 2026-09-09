@@ -1,5 +1,6 @@
 using Expressif.LanguageServer.Core.Documents;
 using Expressif.LanguageServer.Core.Hover;
+using Expressif.LanguageServer.Core.Scopes;
 using Expressif.LanguageServer.Core.Syntax;
 using Expressif.LanguageServer.Handlers;
 using Moq;
@@ -23,7 +24,7 @@ public sealed class HoverHandlerTests
         var hovers = new Mock<IFunctionHoverService>();
         hovers.Setup(service => service.GetHover(It.IsAny<Expressif.Syntax.RootExpressionSyntax>(), 10))
             .Returns(new FunctionHover("upper()", "Uppercase text.", 8, 5));
-        var handler = new HoverHandler(documents, hovers.Object);
+        var handler = new HoverHandler(documents, hovers.Object, new FieldScopeService());
 
         var result = await handler.Handle(new HoverParams
         {
@@ -46,7 +47,7 @@ public sealed class HoverHandlerTests
     public async Task Handle_ClosedDocument_ReturnsNoHoverAsync()
     {
         var documents = new DocumentStore(new SyntaxService());
-        var handler = new HoverHandler(documents, Mock.Of<IFunctionHoverService>());
+        var handler = new HoverHandler(documents, Mock.Of<IFunctionHoverService>(), new FieldScopeService());
 
         var result = await handler.Handle(new HoverParams
         {
@@ -71,7 +72,7 @@ public sealed class HoverHandlerTests
             .Returns(new FunctionHover(
                 "append(text)", "Appends text.", 0, 6,
                 "Deprecated. Use suffix instead.\nSunset: Expressif 3.0."));
-        var handler = new HoverHandler(documents, hovers.Object);
+        var handler = new HoverHandler(documents, hovers.Object, new FieldScopeService());
 
         var result = await handler.Handle(new HoverParams
         {

@@ -37,6 +37,17 @@ internal static class SyntaxDiagnosticMapper
         };
     }
 
+    public static Diagnostic Map(string source, LegacyTupleReference reference) => new()
+    {
+        Message = reference.Message,
+        Range = new Range(ToPosition(source, reference.Start),
+            ToPosition(source, reference.Start + reference.Length)),
+        Severity = DiagnosticSeverity.Hint,
+        Tags = new Container<DiagnosticTag>(DiagnosticTag.Deprecated),
+        Source = "expressif",
+        Code = "deprecated-tuple-notation"
+    };
+
     public static Diagnostic Map(string source, FunctionCallDiagnostic diagnostic)
     {
         return new Diagnostic

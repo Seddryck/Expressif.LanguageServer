@@ -30,6 +30,7 @@ public static class Program
             .WithServices(services =>
             {
                 services.AddSingleton<ISyntaxService, SyntaxService>();
+                services.AddSingleton<ILegacyTupleReferenceService, LegacyTupleReferenceService>();
                 services.AddSingleton<IDocumentStore, DocumentStore>();
                 services.AddSingleton<IExpressionEvaluationService, ExpressionEvaluationService>();
                 services.AddSingleton<IFunctionCatalog, ExpressifFunctionCatalog>();

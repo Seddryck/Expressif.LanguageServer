@@ -183,7 +183,7 @@ public sealed class TextDocumentSyncHandlerTests
     {
         handler = new(new DocumentStore(new SyntaxService()),
             new FunctionCallDiagnosticService(new ExpressifFunctionCatalog()), lifecycleDiagnostics.Object,
-            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object));
+            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object), new LegacyTupleReferenceService());
 
         await handler.Handle(new DidOpenTextDocumentParams
         {

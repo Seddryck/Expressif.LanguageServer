@@ -1,5 +1,7 @@
 using Expressif.LanguageServer.Core.CodeActions;
 using Expressif.LanguageServer.Core.Documents;
+using Expressif.LanguageServer.Core.Diagnostics;
+using Expressif.LanguageServer.Diagnostics;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
@@ -7,7 +9,8 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 namespace Expressif.LanguageServer.Handlers;
 
-public sealed class CodeActionHandler(IDocumentStore documents, IFunctionCodeActionService codeActions)
+public sealed class CodeActionHandler(IDocumentStore documents, IFunctionCodeActionService codeActions,
+    ILegacyTupleReferenceService tupleReferences)
     : CodeActionHandlerBase
 {
     public override Task<CodeAction> Handle(CodeAction request, CancellationToken cancellationToken)
@@ -19,7 +22,11 @@ public sealed class CodeActionHandler(IDocumentStore documents, IFunctionCodeAct
         if (!documents.TryGet(request.TextDocument.Uri.ToUri(), out var document) ||
             document?.SyntaxTree is null ||
             !TryGetOffset(document.Text, request.Range.Start, out var start) ||
-            !TryGetOffset(document.Text, request.Range.End, out var end))
+            !TryGetOffset(document.Text, request.Range.End, out var end) || end < start)
+            return Task.FromResult<CommandOrCodeActionContainer?>(new CommandOrCodeActionContainer());
+
+        if (request.Context.Only is { } only && !only.Any(kind =>
+                kind == CodeActionKind.QuickFix || string.IsNullOrEmpty(kind.ToString())))
             return Task.FromResult<CommandOrCodeActionContainer?>(new CommandOrCodeActionContainer());
 
         var actions = codeActions.GetReplacements(document.SyntaxTree, start, end - start)
@@ -46,6 +53,28 @@ public sealed class CodeActionHandler(IDocumentStore documents, IFunctionCodeAct
                     }
                 }
             }))
+            .Concat(tupleReferences.GetReferences(document.SyntaxTree)
+                .Where(reference => reference.Replacement is not null && reference.Overlaps(start, end - start))
+                .Select(reference => new CommandOrCodeAction(new CodeAction
+                {
+                    Title = $"Replace '{reference.Text}' with '{reference.Replacement}'",
+                    Kind = CodeActionKind.QuickFix,
+                    IsPreferred = true,
+                    Diagnostics = new Container<Diagnostic>(SyntaxDiagnosticMapper.Map(document.Text, reference)),
+                    Edit = new WorkspaceEdit
+                    {
+                        Changes = new Dictionary<DocumentUri, IEnumerable<TextEdit>>
+                        {
+                            [request.TextDocument.Uri] = [new TextEdit
+                            {
+                                NewText = reference.Replacement!,
+                                Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                                    GetPosition(document.Text, reference.Start),
+                                    GetPosition(document.Text, reference.Start + reference.Length))
+                            }]
+                        }
+                    }
+                })))
             .ToArray();
         return Task.FromResult<CommandOrCodeActionContainer?>(new CommandOrCodeActionContainer(actions));
     }
@@ -61,6 +90,8 @@ public sealed class CodeActionHandler(IDocumentStore documents, IFunctionCodeAct
     private static bool TryGetOffset(string text, Position position, out int offset)
     {
         offset = 0;
+        if (position.Line < 0 || position.Character < 0)
+            return false;
         for (var line = 0; line < position.Line; line++)
         {
             var newline = text.IndexOf('\n', offset);

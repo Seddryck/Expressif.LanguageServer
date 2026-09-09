@@ -42,7 +42,7 @@ public sealed class TextDocumentSyncHandlerTests
         lifecycleDiagnostics.Setup(service => service.GetDiagnostics(It.IsAny<RootExpressionSyntax>()))
             .Returns([]);
         handler = new(new DocumentStore(syntax.Object), functionCallDiagnostics.Object,
-            lifecycleDiagnostics.Object, server.Object);
+            lifecycleDiagnostics.Object, server.Object, new LegacyTupleReferenceService());
     }
 
     [Test]
@@ -121,7 +121,7 @@ public sealed class TextDocumentSyncHandlerTests
             .Returns([new FunctionLifecycleDiagnostic(
                 "append", "Function 'append' is deprecated.", 0, 6)]);
         handler = new(documents, functionCallDiagnostics.Object, lifecycleDiagnostics.Object,
-            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object));
+            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object), new LegacyTupleReferenceService());
 
         await handler.Handle(new DidOpenTextDocumentParams
         {
@@ -155,7 +155,7 @@ public sealed class TextDocumentSyncHandlerTests
         functionCallDiagnostics.Setup(service => service.GetDiagnostics(syntaxDocument.Expression))
             .Returns([new FunctionCallDiagnostic("Unknown function 'unknown'.", 0, 7)]);
         handler = new(documents, functionCallDiagnostics.Object, lifecycleDiagnostics.Object,
-            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object));
+            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object), new LegacyTupleReferenceService());
 
         await handler.Handle(new DidOpenTextDocumentParams
         {

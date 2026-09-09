@@ -15,7 +15,8 @@ public sealed class TextDocumentSyncHandler(
     IDocumentStore documents,
     IFunctionCallDiagnosticService functionCallDiagnostics,
     IFunctionLifecycleDiagnosticService lifecycleDiagnostics,
-    ILanguageServerFacade server) : TextDocumentSyncHandlerBase
+    ILanguageServerFacade server,
+    ILegacyTupleReferenceService tupleReferences) : TextDocumentSyncHandlerBase
 {
     public override TextDocumentAttributes GetTextDocumentAttributes(DocumentUri uri) => new(uri, "expressif");
 
@@ -73,7 +74,9 @@ public sealed class TextDocumentSyncHandler(
                     : functionCallDiagnostics.GetDiagnostics(document.SyntaxTree)
                         .Select(diagnostic => SyntaxDiagnosticMapper.Map(document.Text, diagnostic))
                         .Concat(lifecycleDiagnostics.GetDiagnostics(document.SyntaxTree)
-                            .Select(diagnostic => SyntaxDiagnosticMapper.Map(document.Text, diagnostic))))
+                            .Select(diagnostic => SyntaxDiagnosticMapper.Map(document.Text, diagnostic)))
+                        .Concat(tupleReferences.GetReferences(document.SyntaxTree)
+                            .Select(reference => SyntaxDiagnosticMapper.Map(document.Text, reference))))
                 .ToArray()
         });
     }

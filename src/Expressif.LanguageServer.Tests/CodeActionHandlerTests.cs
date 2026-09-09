@@ -1,5 +1,6 @@
 using Expressif.LanguageServer.Core.CodeActions;
 using Expressif.LanguageServer.Core.Documents;
+using Expressif.LanguageServer.Core.Diagnostics;
 using Expressif.LanguageServer.Core.Syntax;
 using Expressif.LanguageServer.Handlers;
 using Moq;
@@ -22,7 +23,7 @@ public sealed class CodeActionHandlerTests
         actions.Setup(service => service.GetReplacements(
                 It.IsAny<Expressif.Syntax.RootExpressionSyntax>(), 0, 6))
             .Returns([new FunctionReplacement("legacy", "modern", 0, 6)]);
-        var handler = new CodeActionHandler(documents, actions.Object);
+        var handler = new CodeActionHandler(documents, actions.Object, new LegacyTupleReferenceService());
 
         var result = await handler.Handle(new CodeActionParams
         {
@@ -54,7 +55,7 @@ public sealed class CodeActionHandlerTests
         actions.Setup(service => service.GetReplacements(
                 It.IsAny<Expressif.Syntax.RootExpressionSyntax>(), 0, 10))
             .Returns([new FunctionReplacement("legacy", "modern", 0, 6)]);
-        var handler = new CodeActionHandler(documents, actions.Object);
+        var handler = new CodeActionHandler(documents, actions.Object, new LegacyTupleReferenceService());
 
         var result = await handler.Handle(new CodeActionParams
         {

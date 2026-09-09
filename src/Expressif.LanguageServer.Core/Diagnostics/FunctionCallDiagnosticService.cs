@@ -29,11 +29,22 @@ public sealed class FunctionCallDiagnosticService(IFunctionCatalog functions)
         }
 
         var minimumArgumentCount = function.Parameters.Sum(parameter => parameter.MinimumCardinality);
-        if (call.Arguments.Count >= minimumArgumentCount)
+        if (call.Arguments.Count < minimumArgumentCount)
+        {
+            yield return new(
+                $"Function '{call.Name}' requires at least {FormatArguments(minimumArgumentCount)}, " +
+                $"but {FormatProvidedArguments(call.Arguments.Count)} provided.",
+                call.Span.Start,
+                call.Span.Length);
+            yield break;
+        }
+
+        if (function.Parameters.Any(parameter => parameter.Variadic) ||
+            call.Arguments.Count <= function.Parameters.Count)
             yield break;
 
         yield return new(
-            $"Function '{call.Name}' requires at least {FormatArguments(minimumArgumentCount)}, " +
+            $"Function '{call.Name}' accepts at most {FormatArguments(function.Parameters.Count)}, " +
             $"but {FormatProvidedArguments(call.Arguments.Count)} provided.",
             call.Span.Start,
             call.Span.Length);

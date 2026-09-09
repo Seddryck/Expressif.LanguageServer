@@ -1,5 +1,6 @@
 using Expressif.LanguageServer.Core.Documents;
 using Expressif.LanguageServer.Core.Diagnostics;
+using Expressif.LanguageServer.Core.Functions;
 using Expressif.LanguageServer.Core.Syntax;
 using Expressif.LanguageServer.Handlers;
 using Expressif.Syntax;
@@ -175,6 +176,46 @@ public sealed class TextDocumentSyncHandlerTests
             Assert.That(diagnostic.Range, Is.EqualTo(
                 new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(0, 0, 0, 7)));
         });
+    }
+
+    [Test]
+    public async Task Open_TooManyArguments_PublishesErrorAndChangeClearsItAsync()
+    {
+        handler = new(new DocumentStore(new SyntaxService()),
+            new FunctionCallDiagnosticService(new ExpressifFunctionCatalog()), lifecycleDiagnostics.Object,
+            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object));
+
+        await handler.Handle(new DidOpenTextDocumentParams
+        {
+            TextDocument = new TextDocumentItem
+            {
+                Uri = DocumentUri,
+                LanguageId = "expressif",
+                Version = 1,
+                Text = "@value |\nadd(1,\n  2, 3)"
+            }
+        }, CancellationToken.None);
+
+        var diagnostic = PublishedDiagnostics().Single().Diagnostics.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Message, Is.EqualTo(
+                "Function 'add' accepts at most 2 arguments, but 3 arguments were provided."));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.Source, Is.EqualTo("expressif"));
+            Assert.That(diagnostic.Range, Is.EqualTo(
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(1, 0, 2, 7)));
+        });
+
+        await handler.Handle(new DidChangeTextDocumentParams
+        {
+            TextDocument = new OptionalVersionedTextDocumentIdentifier { Uri = DocumentUri, Version = 2 },
+            ContentChanges = new Container<TextDocumentContentChangeEvent>(
+                new TextDocumentContentChangeEvent { Text = "@value | add(1)" })
+        }, CancellationToken.None);
+
+        Assert.That(PublishedDiagnostics().Last().Diagnostics, Is.Empty);
+        Assert.That(PublishedDiagnostics().Last().Version, Is.EqualTo(2));
     }
 
     private Task OpenInvalidDocumentAsync() => handler.Handle(new DidOpenTextDocumentParams

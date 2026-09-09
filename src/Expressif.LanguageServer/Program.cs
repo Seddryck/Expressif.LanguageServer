@@ -6,6 +6,7 @@ using Expressif.LanguageServer.Core.Evaluation;
 using Expressif.LanguageServer.Core.Formatting;
 using Expressif.LanguageServer.Core.Functions;
 using Expressif.LanguageServer.Core.Hover;
+using Expressif.LanguageServer.Core.Scopes;
 using Expressif.LanguageServer.Core.SemanticTokens;
 using Expressif.LanguageServer.Core.SignatureHelp;
 using Expressif.LanguageServer.Core.Syntax;
@@ -36,6 +37,7 @@ public static class Program
                 services.AddSingleton<IFunctionCatalog, ExpressifFunctionCatalog>();
                 services.AddSingleton<ICompletionService, CompletionService>();
                 services.AddSingleton<IFunctionHoverService, FunctionHoverService>();
+                services.AddSingleton<IFieldScopeService, FieldScopeService>();
                 services.AddSingleton<IFunctionSignatureHelpService, FunctionSignatureHelpService>();
                 services.AddSingleton<ISemanticTokenService, SemanticTokenService>();
                 services.AddSingleton<IFunctionCallDiagnosticService, FunctionCallDiagnosticService>();
@@ -46,6 +48,7 @@ public static class Program
             .WithHandler<TextDocumentSyncHandler>()
             .WithHandler<CompletionHandler>()
             .WithHandler<HoverHandler>()
+            .WithHandler<DocumentHighlightHandler>()
             .WithHandler<SignatureHelpHandler>()
             .WithHandler<SemanticTokensHandler>()
             .WithHandler<CodeActionHandler>()

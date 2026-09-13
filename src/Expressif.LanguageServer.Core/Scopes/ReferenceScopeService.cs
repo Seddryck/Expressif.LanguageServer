@@ -1,12 +1,14 @@
+using Expressif.Functions;
+using Expressif.Functions.Array;
 using Expressif.LanguageServer.Core.Documents;
 using Expressif.Semantics;
 using Expressif.Syntax;
 
 namespace Expressif.LanguageServer.Core.Scopes;
 
-public sealed class FieldScopeService : IFieldScopeService
+public sealed class ReferenceScopeService : IReferenceScopeService
 {
-    public FieldScope? GetScope(DocumentSnapshot document, int cursorOffset)
+    public ReferenceScope? GetScope(DocumentSnapshot document, int cursorOffset)
     {
         ArgumentNullException.ThrowIfNull(document);
         if (cursorOffset < 0 || cursorOffset >= document.Text.Length ||
@@ -20,11 +22,21 @@ public sealed class FieldScopeService : IFieldScopeService
 
         // Analyze this immutable snapshot; no independent cache can outlive an edit.
         var analysis = new SemanticAnalyzer().Analyze(document.SyntaxTree);
-        var reference = analysis.References.FirstOrDefault(reference =>
-            cursorOffset >= reference.Span.Start && cursorOffset < reference.Span.End);
-        if (reference is null)
-            return null;
+        var field = analysis.References.FirstOrDefault(reference => Contains(reference.Span, cursorOffset));
+        if (field is not null)
+            return GetFieldScope(field, parents);
 
+        var tuple = nodes.OfType<TupleProjectionSyntax>()
+            .FirstOrDefault(reference => Contains(reference.Span, cursorOffset));
+        return tuple is null || analysis.Diagnostics.Count != 0
+            ? null
+            : GetTupleScope(tuple, parents);
+    }
+
+    private static ReferenceScope? GetFieldScope(
+        FieldReference reference,
+        IReadOnlyDictionary<SyntaxNode, SyntaxNode> parents)
+    {
         if (reference.Source.Kind == SemanticSourceKind.Unresolved)
             return GetInputBoundFieldScope(reference, parents);
 
@@ -47,7 +59,83 @@ public sealed class FieldScopeService : IFieldScopeService
         return new(reference.Span, supplier, description);
     }
 
-    private static FieldScope? GetInputBindingScope(
+    private static ReferenceScope GetTupleScope(
+        TupleProjectionSyntax reference,
+        IReadOnlyDictionary<SyntaxNode, SyntaxNode> parents)
+    {
+        var supplier = reference.Direction == TupleProjectionDirection.FromStart && reference.RootDepth == 0
+            ? GetTupleElementSupplier(reference, parents)
+            : null;
+        var description = $"Tuple element at zero-based position {reference.Index}.";
+        description += supplier is null
+            ? " No in-document tuple element is available to highlight."
+            : " The highlighted region is the referenced tuple element.";
+        return new(reference.Span, supplier, description);
+    }
+
+    private static SourceSpan? GetTupleElementSupplier(
+        TupleProjectionSyntax reference,
+        IReadOnlyDictionary<SyntaxNode, SyntaxNode> parents)
+    {
+        if (!TryGetContainingStage(reference, parents, out var root, out var stage) ||
+            IsInElementScope(reference, stage, parents))
+            return null;
+
+        var source = GetPreviousStageNode(root, stage);
+        if (source is not TupleLiteralSyntax tuple || reference.Index < 0 || reference.Index >= tuple.Elements.Count)
+            return null;
+
+        // A spread before the selected position makes the runtime position impossible to map statically.
+        if (tuple.Elements.Take(reference.Index + 1).Any(element => element.IsSpread || element.IsImplicitSpread))
+            return null;
+        return tuple.Elements[reference.Index].Expression?.Span;
+    }
+
+    private static bool TryGetContainingStage(
+        SyntaxNode reference,
+        IReadOnlyDictionary<SyntaxNode, SyntaxNode> parents,
+        out RootExpressionSyntax root,
+        out ExpressionSyntax stage)
+    {
+        var current = reference;
+        while (parents.TryGetValue(current, out var parent))
+        {
+            if (parent is RootExpressionSyntax expressionRoot && current is ExpressionSyntax expression)
+            {
+                root = expressionRoot;
+                stage = expression;
+                return true;
+            }
+            current = parent;
+        }
+        root = null!;
+        stage = null!;
+        return false;
+    }
+
+    private static bool IsInElementScope(
+        SyntaxNode reference,
+        ExpressionSyntax stage,
+        IReadOnlyDictionary<SyntaxNode, SyntaxNode> parents)
+    {
+        var current = reference;
+        while (!ReferenceEquals(current, stage) && parents.TryGetValue(current, out var parent))
+        {
+            if (parent is FunctionCallSyntax call && IntroducesElementScope(call.Name))
+                return true;
+            current = parent;
+        }
+        return false;
+    }
+
+    private static bool IntroducesElementScope(string functionName)
+    {
+        var functions = new FunctionTypeMapper();
+        return functions.TryExecute(functionName, out var type) &&
+               (type == typeof(Map) || type == typeof(Filter) || type == typeof(MapOver) || type == typeof(MapWith));
+    }
+
+    private static ReferenceScope? GetInputBindingScope(
         IReadOnlyList<SyntaxNode> nodes,
         IReadOnlyDictionary<SyntaxNode, SyntaxNode> parents,
         int cursorOffset)
@@ -79,7 +167,7 @@ public sealed class FieldScopeService : IFieldScopeService
                 $"Reference to the input bound as '@{variable.Name}'.");
     }
 
-    private static FieldScope CreateBindingScope(
+    private static ReferenceScope CreateBindingScope(
         SourceSpan reference,
         InputBindingExpressionSyntax binding,
         IReadOnlyDictionary<SyntaxNode, SyntaxNode> parents,
@@ -92,7 +180,7 @@ public sealed class FieldScopeService : IFieldScopeService
         return new(reference, supplier, description);
     }
 
-    private static FieldScope? GetInputBoundFieldScope(
+    private static ReferenceScope? GetInputBoundFieldScope(
         FieldReference reference,
         IReadOnlyDictionary<SyntaxNode, SyntaxNode> parents)
     {
@@ -156,8 +244,10 @@ public sealed class FieldScopeService : IFieldScopeService
             : null;
 
     private static SourceSpan? GetPreviousStage(RootExpressionSyntax root, ExpressionSyntax expression)
-    {
-        SyntaxNode? previous = root switch
+        => GetPreviousStageNode(root, expression)?.Span;
+
+    private static SyntaxNode? GetPreviousStageNode(RootExpressionSyntax root, ExpressionSyntax expression)
+        => root switch
         {
             ClosedExpressionSyntax closed when ReferenceEquals(closed.Value, expression) => null,
             ClosedExpressionSyntax closed => Previous(closed.Value, closed.Pipeline, expression),
@@ -165,8 +255,6 @@ public sealed class FieldScopeService : IFieldScopeService
             OpenExpressionSyntax open => Previous(open.Source, open.Pipeline, expression),
             _ => null
         };
-        return previous?.Span;
-    }
 
     private static SyntaxNode? Previous(
         SyntaxNode? source,

@@ -23,7 +23,7 @@ public sealed class FieldScopeHandlerTests
     public void SetUp()
     {
         documents = new(new SyntaxService());
-        var scopes = new FieldScopeService();
+        var scopes = new ReferenceScopeService();
         highlights = new(documents, scopes);
         hovers = new(documents, Mock.Of<IFunctionHoverService>(), scopes);
     }
@@ -75,6 +75,27 @@ public sealed class FieldScopeHandlerTests
         Assert.That(result!.Single().Range,
             Is.EqualTo(new Range(0, 0, 0, "{name := 1}".Length)));
         Assert.That(hover?.Contents.MarkupContent?.Value, Does.Contain("input bound as '@input'"));
+    }
+
+    [Test]
+    public async Task TupleReference_HighlightsSupplyingElementAsync()
+    {
+        const string text = "T(\"é😀\",\n  .year,\n  .amount) | add($1)";
+        documents.Open(Uri.ToUri(), text, 1);
+
+        var result = await HighlightAsync(2, 18);
+        var hover = await HoverAsync(2, 18);
+
+        Assert.That(result!.Single().Range, Is.EqualTo(new Range(1, 2, 1, 7)));
+        Assert.That(hover?.Contents.MarkupContent?.Value, Does.Contain("zero-based position 1"));
+    }
+
+    [Test]
+    public async Task ExternalTupleReference_ReturnsNoHighlightAsync()
+    {
+        documents.Open(Uri.ToUri(), "$0", 1);
+
+        Assert.That(await HighlightAsync(0, 1), Is.Empty);
     }
 
     [TestCase(0, -1)]

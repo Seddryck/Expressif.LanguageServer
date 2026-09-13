@@ -6,7 +6,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 namespace Expressif.LanguageServer.Handlers;
 
-public sealed class DocumentHighlightHandler(IDocumentStore documents, IFieldScopeService scopes)
+public sealed class DocumentHighlightHandler(IDocumentStore documents, IReferenceScopeService scopes)
     : DocumentHighlightHandlerBase
 {
     public override Task<DocumentHighlightContainer?> Handle(

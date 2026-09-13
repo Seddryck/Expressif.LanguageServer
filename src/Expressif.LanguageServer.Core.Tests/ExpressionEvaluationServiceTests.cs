@@ -23,6 +23,32 @@ public sealed class ExpressionEvaluationServiceTests
     }
 
     [Test]
+    public void Evaluate_ExpressifOutput_SerializesStructuredResult()
+    {
+        var result = service.Evaluate("{name := \"Ada\", scores := {1, 2}}", outputFormat: EvaluationOutputFormat.Expressif);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Value, Is.EqualTo("{name := \"Ada\", scores := {1, 2}}"));
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
+    public void Evaluate_JsonOutput_SerializesStructuredResult()
+    {
+        var result = service.Evaluate("{name := \"Ada\", scores := {1, 2}}", outputFormat: EvaluationOutputFormat.Json);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Value, Is.EqualTo("{\"name\":\"Ada\",\"scores\":[1,2]}"));
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
     public void Evaluate_OpenExpressionWithoutInput_RequestsInput()
     {
         var result = service.Evaluate("add(2)");

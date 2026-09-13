@@ -50,7 +50,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'expressif' }],
     outputChannel,
-    traceOutputChannel: outputChannel
+    traceOutputChannel: outputChannel,
+    synchronize: {
+      configurationSection: 'expressif'
+    }
   };
 
   client = new LanguageClient(

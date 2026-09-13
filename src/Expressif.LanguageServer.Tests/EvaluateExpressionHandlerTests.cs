@@ -3,6 +3,7 @@ using Expressif.LanguageServer.Handlers;
 using Moq;
 using NUnit.Framework;
 using OmniSharp.Extensions.JsonRpc;
+using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 
 namespace Expressif.LanguageServer.Tests;
 
@@ -18,8 +19,15 @@ public sealed class EvaluateExpressionHandlerTests
             "add(2)",
             "40",
             EvaluationInputFormat.Json,
-            EvaluationOutputFormat.Json)).Returns(expected);
-        var handler = new EvaluateExpressionHandler(evaluation.Object, Mock.Of<ISerializer>());
+            EvaluationOutputFormat.Json,
+            new EvaluationOutputOptions(EvaluationOutputFormatting.Pretty, 4))).Returns(expected);
+        var configuration = new Mock<ILanguageServerConfiguration>();
+        configuration.Setup(config => config["expressif:output:formatting"]).Returns("pretty");
+        configuration.Setup(config => config["expressif:output:indent"]).Returns("4");
+        var handler = new EvaluateExpressionHandler(
+            evaluation.Object,
+            configuration.Object,
+            Mock.Of<ISerializer>());
 
         var result = await handler.Handle(
             "add(2)",
@@ -33,6 +41,7 @@ public sealed class EvaluateExpressionHandlerTests
             "add(2)",
             "40",
             EvaluationInputFormat.Json,
-            EvaluationOutputFormat.Json), Times.Once);
+            EvaluationOutputFormat.Json,
+            new EvaluationOutputOptions(EvaluationOutputFormatting.Pretty, 4)), Times.Once);
     }
 }

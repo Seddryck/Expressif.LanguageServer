@@ -24,6 +24,7 @@ public static class Program
         var server = await global::OmniSharp.Extensions.LanguageServer.Server.LanguageServer.From(options => options
             .WithInput(Console.OpenStandardInput())
             .WithOutput(Console.OpenStandardOutput())
+            .WithConfigurationSection("expressif")
             .ConfigureLogging(logging =>
             {
                 logging.AddConsole(console => console.LogToStandardErrorThreshold = LogLevel.Trace);

@@ -6,5 +6,6 @@ public interface IExpressionEvaluationService
         string expression,
         string? input = null,
         EvaluationInputFormat inputFormat = EvaluationInputFormat.Literal,
-        EvaluationOutputFormat outputFormat = EvaluationOutputFormat.Expressif);
+        EvaluationOutputFormat outputFormat = EvaluationOutputFormat.Expressif,
+        EvaluationOutputOptions? outputOptions = null);
 }

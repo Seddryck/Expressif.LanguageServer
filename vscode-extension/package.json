@@ -103,6 +103,24 @@
           "scope": "machine",
           "description": "Optional absolute path to an Expressif.LanguageServer executable. Leave empty to use the server bundled in this extension."
         },
+        "expressif.output.formatting": {
+          "type": "string",
+          "enum": [
+            "compact",
+            "pretty"
+          ],
+          "default": "compact",
+          "scope": "window",
+          "description": "Controls whether evaluation results use compact or pretty rendering."
+        },
+        "expressif.output.indent": {
+          "type": "integer",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 16,
+          "scope": "window",
+          "description": "Number of spaces used for each indentation level in pretty evaluation results. This setting does not affect compact rendering."
+        },
         "expressifLanguageServer.trace.server": {
           "type": "string",
           "enum": [

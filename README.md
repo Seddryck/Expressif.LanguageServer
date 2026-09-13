@@ -105,7 +105,9 @@ After choosing the input, choose the result representation:
 .json
 ```
 
-Evaluation results are currently displayed in the **Expressif Evaluation** output channel.
+Evaluation results open as read-only virtual documents beside the Expressif script. `.expressif`
+results use Expressif language mode and `.json` results use JSON language mode. Re-running the
+same script with the same output format refreshes the existing result editor.
 
 Press `Ctrl+Shift+Enter` (`Cmd+Shift+Enter` on macOS), or run **Expressif: Run Expression with Last Input and Output**, to evaluate again using the most recently selected input and output format. If either choice is unavailable, only the missing choice is requested.
 

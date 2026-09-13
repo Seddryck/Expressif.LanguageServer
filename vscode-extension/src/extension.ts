@@ -8,6 +8,11 @@ import {
   ServerOptions,
   TransportKind
 } from 'vscode-languageclient/node';
+import {
+  evaluationResultScheme,
+  EvaluationResultDocumentProvider,
+  EvaluationResultFormat
+} from './evaluationResultDocumentProvider';
 
 let client: LanguageClient | undefined;
 let previousInput: EvaluationInput | undefined;
@@ -33,12 +38,16 @@ interface EvaluationResult {
   error?: string;
 }
 
-type EvaluationOutputFormat = 'Expressif' | 'Json';
+type EvaluationOutputFormat = EvaluationResultFormat;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const outputChannel = vscode.window.createOutputChannel('Expressif Language Server', { log: true });
-  const evaluationChannel = vscode.window.createOutputChannel('Expressif Evaluation');
-  context.subscriptions.push(outputChannel, evaluationChannel);
+  const evaluationResults = new EvaluationResultDocumentProvider();
+  context.subscriptions.push(
+    outputChannel,
+    evaluationResults,
+    vscode.workspace.registerTextDocumentContentProvider(evaluationResultScheme, evaluationResults)
+  );
   rememberActiveEditor(vscode.window.activeTextEditor);
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(rememberActiveEditor));
 
@@ -48,7 +57,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     debug: executable
   };
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: 'file', language: 'expressif' }],
+    documentSelector: [
+      { scheme: 'file', language: 'expressif' },
+      { scheme: evaluationResultScheme, language: 'expressif' }
+    ],
     outputChannel,
     traceOutputChannel: outputChannel,
     synchronize: {
@@ -66,11 +78,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(client);
   context.subscriptions.push(vscode.commands.registerCommand(
     'expressif.runExpression',
-    () => runExpression(evaluationChannel, false)
+    () => runExpression(evaluationResults, false)
   ));
   context.subscriptions.push(vscode.commands.registerCommand(
     'expressif.runExpressionWithPreviousSelections',
-    () => runExpression(evaluationChannel, true)
+    () => runExpression(evaluationResults, true)
   ));
   outputChannel.appendLine(`Starting ${executable.command}`);
 
@@ -83,7 +95,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 async function runExpression(
-  outputChannel: vscode.OutputChannel,
+  evaluationResults: EvaluationResultDocumentProvider,
   reuseSelections: boolean
 ): Promise<void> {
   const activeEditor = vscode.window.activeTextEditor;
@@ -144,17 +156,39 @@ async function runExpression(
       previousInput = selectedInput;
     }
 
-    outputChannel.appendLine(`> ${expression.trim()}`);
-    if (selectedInput.value !== undefined) {
-      outputChannel.appendLine(`Input (${selectedInput.description}): ${selectedInput.value}`);
-    }
-    outputChannel.appendLine(`Result (.${outputFormat === 'Json' ? 'json' : 'expressif'}): ${result.value ?? ''}`);
-    outputChannel.appendLine('');
-    outputChannel.show(true);
+    await showEvaluationResult(
+      evaluationResults,
+      expressionEditor,
+      outputFormat,
+      result.value ?? ''
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await vscode.window.showErrorMessage(`Expressif evaluation failed: ${message}`);
   }
+}
+
+async function showEvaluationResult(
+  evaluationResults: EvaluationResultDocumentProvider,
+  expressionEditor: vscode.TextEditor,
+  outputFormat: EvaluationOutputFormat,
+  content: string
+): Promise<void> {
+  const resultUri = evaluationResults.update(expressionEditor.document.uri, outputFormat, content);
+  let resultDocument = await vscode.workspace.openTextDocument(resultUri);
+  const languageId = outputFormat === 'Json' ? 'json' : 'expressif';
+  if (resultDocument.languageId !== languageId) {
+    resultDocument = await vscode.languages.setTextDocumentLanguage(resultDocument, languageId);
+  }
+
+  const viewColumn = expressionEditor.viewColumn === undefined
+    ? vscode.ViewColumn.Beside
+    : expressionEditor.viewColumn + 1;
+  await vscode.window.showTextDocument(resultDocument, {
+    viewColumn,
+    preserveFocus: false,
+    preview: false
+  });
 }
 
 async function selectEvaluationOutputFormat(): Promise<EvaluationOutputFormat | undefined> {

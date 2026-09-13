@@ -58,6 +58,9 @@ public sealed class ExpressionEvaluationService : IExpressionEvaluationService
         var indent = outputOptions.Formatting == EvaluationOutputFormatting.Pretty
             ? new string(' ', outputOptions.Indent)
             : string.Empty;
-        return ValueSerializers.Resolve(serializationFormat).Serialize(value, valueFormat, indent);
+        var serialized = ValueSerializers.Resolve(serializationFormat).Serialize(value, valueFormat, indent);
+        return outputOptions.Formatting == EvaluationOutputFormatting.Pretty
+            ? $"\n{serialized}"
+            : serialized;
     }
 }

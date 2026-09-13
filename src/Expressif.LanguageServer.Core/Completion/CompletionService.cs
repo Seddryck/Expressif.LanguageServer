@@ -76,9 +76,12 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
         try
         {
             var syntax = ExpressifSyntax.Parse(probeText);
-            return DescendantsAndSelf(syntax)
-                .OfType<FunctionCallSyntax>()
-                .Any(function => function.Name.Equals(ProbeName, StringComparison.Ordinal));
+            return DescendantsAndSelf(syntax).Any(node => node switch
+            {
+                FunctionCallSyntax function => function.Name.Equals(ProbeName, StringComparison.Ordinal),
+                TupleBindingShorthandSyntax shorthand => shorthand.Name.Equals(ProbeName, StringComparison.Ordinal),
+                _ => false
+            });
         }
         catch (ExpressifSyntaxException)
         {

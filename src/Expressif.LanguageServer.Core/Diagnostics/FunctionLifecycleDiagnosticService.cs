@@ -1,4 +1,5 @@
 using Expressif.LanguageServer.Core.Functions;
+using Expressif.LanguageServer.Core.Syntax;
 using Expressif.Syntax;
 
 namespace Expressif.LanguageServer.Core.Diagnostics;
@@ -10,15 +11,14 @@ public sealed class FunctionLifecycleDiagnosticService(IFunctionCatalog function
     {
         ArgumentNullException.ThrowIfNull(syntaxTree);
 
-        return DescendantsAndSelf(syntaxTree)
-            .OfType<FunctionCallSyntax>()
+        return CallableSyntaxReference.DescendantsOf(syntaxTree)
             .Select(call => (Call: call, Metadata: FindFunction(call.Name)))
             .Where(match => match.Metadata?.Deprecated == true)
             .Select(match => new FunctionLifecycleDiagnostic(
                 match.Call.Name,
                 CreateMessage(match.Call.Name, match.Metadata!),
-                match.Call.Span.Start,
-                match.Call.Name.Length))
+                match.Call.NameSpan.Start,
+                match.Call.NameSpan.Length))
             .ToArray();
     }
 
@@ -34,13 +34,5 @@ public sealed class FunctionLifecycleDiagnosticService(IFunctionCatalog function
         if (!string.IsNullOrWhiteSpace(function.Sunset))
             message += $" It sunsets in Expressif {function.Sunset}.";
         return message;
-    }
-
-    private static IEnumerable<SyntaxNode> DescendantsAndSelf(SyntaxNode node)
-    {
-        yield return node;
-        foreach (var child in node.Children)
-        foreach (var descendant in DescendantsAndSelf(child))
-            yield return descendant;
     }
 }

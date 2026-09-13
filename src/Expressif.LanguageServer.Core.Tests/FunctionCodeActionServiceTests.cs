@@ -50,6 +50,18 @@ public sealed class FunctionCodeActionServiceTests
         Assert.That(service.GetReplacements(Parse("legacy()"), 9, 1), Is.Empty);
     }
 
+    [TestCase("~legacy", 1)]
+    [TestCase("legacy~", 0)]
+    public void GetReplacements_TupleBindingCallable_ReplacesNameOnly(string text, int expectedStart)
+    {
+        var replacement = CreateService(safe: true)
+            .GetReplacements(Parse(text), expectedStart + 2, 0)
+            .Single();
+
+        Assert.That((replacement.IdentifierStart, replacement.IdentifierLength, replacement.NewName),
+            Is.EqualTo((expectedStart, "legacy".Length, "modern")));
+    }
+
     private static FunctionCodeActionService CreateService(bool safe) => new(new TestFunctionCatalog(
     [
         new("legacy", [], [], "Legacy.", "Text", true, "modern", "3.0", safe),

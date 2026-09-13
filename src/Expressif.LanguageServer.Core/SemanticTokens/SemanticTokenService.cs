@@ -25,6 +25,12 @@ public sealed class SemanticTokenService : ISemanticTokenService
                     AddNamedToken(tokens, function.Span, function.Text, function.Name,
                         SemanticTokenKind.Function, text.Length);
                     break;
+                case TupleBindingShorthandSyntax shorthand:
+                    Add(tokens, shorthand.NameSpan.Start, shorthand.NameSpan.Length,
+                        SemanticTokenKind.Function, text.Length);
+                    Add(tokens, shorthand.TildeSpan.Start, shorthand.TildeSpan.Length,
+                        SemanticTokenKind.Operator, text.Length);
+                    break;
                 case RecordAccessSyntax access:
                     AddRecordFields(tokens, access, text.Length);
                     break;

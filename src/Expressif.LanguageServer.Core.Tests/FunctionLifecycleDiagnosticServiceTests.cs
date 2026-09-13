@@ -67,6 +67,21 @@ public sealed class FunctionLifecycleDiagnosticServiceTests
             Is.EqualTo(text.IndexOf("append", StringComparison.Ordinal)));
     }
 
+    [TestCase("~append", 1)]
+    [TestCase("append~", 0)]
+    public void GetDiagnostics_DeprecatedTupleBindingCallable_ReportsNameOnly(string text, int expectedStart)
+    {
+        var service = new FunctionLifecycleDiagnosticService(new TestFunctionCatalog(
+        [
+            new("append", [], [], "Append text.", "Text", true, "suffix")
+        ]));
+
+        var diagnostic = service.GetDiagnostics(Parse(text)).Single();
+
+        Assert.That((diagnostic.IdentifierStart, diagnostic.IdentifierLength),
+            Is.EqualTo((expectedStart, "append".Length)));
+    }
+
     private static Expressif.Syntax.RootExpressionSyntax Parse(string text)
     {
         var result = new SyntaxService().Parse(text);

@@ -108,6 +108,22 @@ public sealed class FunctionHoverServiceTests
         Assert.That(result?.IdentifierStart, Is.EqualTo(cursor));
     }
 
+    [TestCase("~lower", 2, 1)]
+    [TestCase("lower~", 2, 0)]
+    [TestCase("~text-to-lower", 5, 1)]
+    public void GetHover_TupleBindingShorthand_ResolvesUnderlyingCallable(
+        string text, int cursor, int expectedStart)
+    {
+        var result = service.GetHover(Parse(text), cursor);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result?.Signature, Is.EqualTo("lower()"));
+            Assert.That(result?.IdentifierStart, Is.EqualTo(expectedStart));
+            Assert.That(result?.IdentifierLength, Is.EqualTo(text.Trim('~').Length));
+        });
+    }
+
     [Test]
     public void GetHover_DeprecatedFunction_IncludesReplacementAndSunset()
     {

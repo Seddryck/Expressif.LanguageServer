@@ -1,4 +1,5 @@
 using Expressif.LanguageServer.Core.Functions;
+using Expressif.LanguageServer.Core.Syntax;
 using Expressif.Syntax;
 
 namespace Expressif.LanguageServer.Core.Hover;
@@ -11,11 +12,10 @@ public sealed class FunctionHoverService(IFunctionCatalog functions) : IFunction
         if (cursorOffset < 0 || cursorOffset > syntaxTree.Text.Length)
             throw new ArgumentOutOfRangeException(nameof(cursorOffset));
 
-        var call = DescendantsAndSelf(syntaxTree)
-            .OfType<FunctionCallSyntax>()
-            .Where(function => cursorOffset >= function.Span.Start &&
-                               cursorOffset < function.Span.Start + function.Name.Length)
-            .OrderBy(function => function.Span.Length)
+        var call = CallableSyntaxReference.DescendantsOf(syntaxTree)
+            .Where(function => cursorOffset >= function.NameSpan.Start &&
+                               cursorOffset < function.NameSpan.End)
+            .OrderBy(function => function.NameSpan.Length)
             .FirstOrDefault();
         if (call is null)
             return null;
@@ -30,8 +30,8 @@ public sealed class FunctionHoverService(IFunctionCatalog functions) : IFunction
         return new FunctionHover(
             $"{metadata.Name}({parameters})",
             metadata.Description,
-            call.Span.Start,
-            call.Name.Length,
+            call.NameSpan.Start,
+            call.NameSpan.Length,
             CreateLifecycleNotice(metadata));
     }
 
@@ -46,13 +46,5 @@ public sealed class FunctionHoverService(IFunctionCatalog functions) : IFunction
         if (!string.IsNullOrWhiteSpace(function.Sunset))
             notice += $"\nSunset: Expressif {function.Sunset}.";
         return notice;
-    }
-
-    private static IEnumerable<SyntaxNode> DescendantsAndSelf(SyntaxNode node)
-    {
-        yield return node;
-        foreach (var child in node.Children)
-        foreach (var descendant in DescendantsAndSelf(child))
-            yield return descendant;
     }
 }

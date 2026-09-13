@@ -120,6 +120,22 @@ The VS Code extension exposes these settings:
 | `expressif.output.indent` | Spaces per indentation level for `pretty` evaluation results. Defaults to `2` and does not affect compact rendering. |
 | `expressifLanguageServer.trace.server` | LSP tracing level: `off`, `messages` or `verbose`. |
 
+To change evaluation rendering, open VS Code Settings (`Ctrl+,` or `Cmd+,`), search for
+`Expressif Output`, and choose **compact** or **pretty**. When **pretty** is selected, set
+**Expressif › Output: Indent** to the number of spaces to use at each level. The equivalent
+`settings.json` configuration is:
+
+```json
+{
+  "expressif.output.formatting": "pretty",
+  "expressif.output.indent": 4
+}
+```
+
+Change `pretty` to `compact` for single-line results. The indent setting is ignored in compact
+mode. Changes apply to the next evaluation without reloading VS Code; pretty results start on a
+new line after the result label.
+
 Language-server logs and protocol traces are available from **View → Output → Expressif Language Server**.
 
 ## Current limitations

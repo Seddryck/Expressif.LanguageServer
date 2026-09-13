@@ -15,7 +15,16 @@ The diagnostic targets only the affected callable; the operator and callable the
 
 Press `Ctrl+Shift+Enter` (`Cmd+Shift+Enter` on macOS), or run **Expressif: Run Expression with Last Input and Output**, to repeat an evaluation with the most recently selected input and output format. If either selection has not yet been made in the current VS Code session, the extension prompts only for the missing choice.
 
-Evaluation results use compact rendering by default. Set `expressif.output.formatting` to `pretty` for multiline output and use `expressif.output.indent` to choose the number of spaces per indentation level. These settings are persisted by VS Code and changes are sent to the language server automatically.
+Evaluation results use compact rendering by default. Open VS Code Settings (`Ctrl+,` or `Cmd+,`), search for `Expressif Output`, and choose **compact** or **pretty**. In pretty mode, set **Expressif › Output: Indent** to the number of spaces per indentation level. You can make the same change in `settings.json`:
+
+```json
+{
+  "expressif.output.formatting": "pretty",
+  "expressif.output.indent": 4
+}
+```
+
+Change `pretty` to `compact` for single-line results; `expressif.output.indent` is ignored in compact mode. Changes apply to the next evaluation without reloading VS Code. Pretty results start on a new line after the result label.
 
 ## Development
 

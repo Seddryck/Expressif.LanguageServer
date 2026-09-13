@@ -111,11 +111,13 @@ Press `Ctrl+Shift+Enter` (`Cmd+Shift+Enter` on macOS), or run **Expressif: Run E
 
 ### Configuration
 
-The VS Code extension exposes two settings:
+The VS Code extension exposes these settings:
 
 | Setting | Description |
 | --- | --- |
 | `expressif.languageServer.path` | Optional path to a separately installed language-server executable. When empty, the bundled server is used. |
+| `expressif.output.formatting` | Evaluation result rendering: `compact` (the default) or `pretty`. |
+| `expressif.output.indent` | Spaces per indentation level for `pretty` evaluation results. Defaults to `2` and does not affect compact rendering. |
 | `expressifLanguageServer.trace.server` | LSP tracing level: `off`, `messages` or `verbose`. |
 
 Language-server logs and protocol traces are available from **View → Output → Expressif Language Server**.

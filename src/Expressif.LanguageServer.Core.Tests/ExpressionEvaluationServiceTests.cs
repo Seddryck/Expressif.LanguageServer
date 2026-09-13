@@ -48,6 +48,35 @@ public sealed class ExpressionEvaluationServiceTests
         });
     }
 
+    [TestCase(EvaluationOutputFormat.Expressif, "{\n  name := \"Ada\",\n  scores := {\n    1,\n    2\n  }\n}")]
+    [TestCase(EvaluationOutputFormat.Json, "{\n  \"name\": \"Ada\",\n  \"scores\": [\n    1,\n    2\n  ]\n}")]
+    public void Evaluate_PrettyOutput_UsesConfiguredIndentation(
+        EvaluationOutputFormat outputFormat,
+        string expected)
+    {
+        var result = service.Evaluate(
+            "{name := \"Ada\", scores := {1, 2}}",
+            outputFormat: outputFormat,
+            outputOptions: new(EvaluationOutputFormatting.Pretty, 2));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Value, Is.EqualTo(expected));
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
+    public void Evaluate_CompactOutput_IgnoresConfiguredIndentation()
+    {
+        var result = service.Evaluate(
+            "{name := \"Ada\", scores := {1, 2}}",
+            outputOptions: new(EvaluationOutputFormatting.Compact, 16));
+
+        Assert.That(result.Value, Is.EqualTo("{name := \"Ada\", scores := {1, 2}}"));
+    }
+
     [Test]
     public void Evaluate_OpenExpressionWithoutInput_RequestsInput()
     {

@@ -9,22 +9,24 @@ public sealed class ExpressionEvaluationService : IExpressionEvaluationService
         string expression,
         string? input = null,
         EvaluationInputFormat inputFormat = EvaluationInputFormat.Literal,
-        EvaluationOutputFormat outputFormat = EvaluationOutputFormat.Expressif)
+        EvaluationOutputFormat outputFormat = EvaluationOutputFormat.Expressif,
+        EvaluationOutputOptions? outputOptions = null)
     {
         if (string.IsNullOrWhiteSpace(expression))
             return ExpressionEvaluationResult.Failure("The expression is empty.");
 
         try
         {
+            outputOptions ??= new EvaluationOutputOptions();
             if (input is null)
             {
                 var closedResult = Expression.CreateClosed(expression, new Context()).Evaluate(null);
-                return ExpressionEvaluationResult.Success(Serialize(closedResult, outputFormat));
+                return ExpressionEvaluationResult.Success(Serialize(closedResult, outputFormat, outputOptions));
             }
 
             var value = EvaluationInputParser.Parse(input, inputFormat);
             var result = Expression.Create(expression, new Context()).Evaluate(value);
-            return ExpressionEvaluationResult.Success(Serialize(result, outputFormat));
+            return ExpressionEvaluationResult.Success(Serialize(result, outputFormat, outputOptions));
         }
         catch (ExpressionRequiresInputException)
         {
@@ -36,7 +38,10 @@ public sealed class ExpressionEvaluationService : IExpressionEvaluationService
         }
     }
 
-    private static string Serialize(object? value, EvaluationOutputFormat outputFormat)
+    private static string Serialize(
+        object? value,
+        EvaluationOutputFormat outputFormat,
+        EvaluationOutputOptions outputOptions)
     {
         var serializationFormat = outputFormat switch
         {
@@ -44,6 +49,15 @@ public sealed class ExpressionEvaluationService : IExpressionEvaluationService
             EvaluationOutputFormat.Json => ValueSerializationFormat.Json,
             _ => throw new ArgumentOutOfRangeException(nameof(outputFormat), outputFormat, "Unknown evaluation output format."),
         };
-        return ValueSerializers.Resolve(serializationFormat).Serialize(value);
+        var valueFormat = outputOptions.Formatting switch
+        {
+            EvaluationOutputFormatting.Compact => ValueFormat.Compact,
+            EvaluationOutputFormatting.Pretty => ValueFormat.Pretty,
+            _ => throw new ArgumentOutOfRangeException(nameof(outputOptions), outputOptions, "Unknown evaluation output formatting."),
+        };
+        var indent = outputOptions.Formatting == EvaluationOutputFormatting.Pretty
+            ? new string(' ', outputOptions.Indent)
+            : string.Empty;
+        return ValueSerializers.Resolve(serializationFormat).Serialize(value, valueFormat, indent);
     }
 }

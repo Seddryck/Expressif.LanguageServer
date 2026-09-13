@@ -64,7 +64,7 @@ public sealed class DocumentFormatterTests
     [Test]
     public void Format_MultilineNamedInputBinding_IndentsBody()
     {
-        const string source = """
+        var source = """
             {taxRate := 0.20, prices := {100, 200, 50}}
             | source :>
             .prices
@@ -76,10 +76,10 @@ public sealed class DocumentFormatterTests
                     | add(@source | .prices | cardinality)
                 )
             )
-            """;
+            """.ReplaceLineEndings("\n");
 
         var formatted = Format(source);
-        const string expected = """
+        var expected = """
             {taxRate := 0.20, prices := {100, 200, 50}}
             | source :>
                 .prices
@@ -91,7 +91,7 @@ public sealed class DocumentFormatterTests
                         | add(@source | .prices | cardinality)
                     )
                 )
-            """;
+            """.ReplaceLineEndings("\n");
 
         Assert.Multiple(() =>
         {

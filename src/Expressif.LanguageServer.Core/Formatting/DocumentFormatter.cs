@@ -77,7 +77,7 @@ public sealed class DocumentFormatter : IDocumentFormatter
             }
 
             var pair = position + 1 < source.Length ? source.Substring(position, 2) : string.Empty;
-            if (pair is "|>" or ":=" or "=>")
+            if (pair is "|>" or ":=" or "=>" or ":>")
             {
                 yield return new(TokenKind.BinaryOperator, source.Substring(position, 2), position, lineBreakBefore);
                 position += 2;
@@ -134,7 +134,7 @@ public sealed class DocumentFormatter : IDocumentFormatter
         => value is '(' or ')' or '{' or '}' or '[' or ']' or ',' or '|';
 
     private static bool StartsFormattingOperator(string source, int position)
-        => position + 1 < source.Length && source.Substring(position, 2) is "|>" or ":=" or "=>";
+        => position + 1 < source.Length && source.Substring(position, 2) is "|>" or ":=" or "=>" or ":>";
 
     private sealed class Layout
     {
@@ -144,7 +144,8 @@ public sealed class DocumentFormatter : IDocumentFormatter
             IReadOnlySet<int> multilinePipelineOperators,
             IReadOnlySet<int> multilineDelimiters,
             IReadOnlySet<int> openDelimiters,
-            IReadOnlySet<int> closeDelimiters)
+            IReadOnlySet<int> closeDelimiters,
+            IReadOnlyDictionary<int, int> bindingIndentationChanges)
         {
             ProtectedByStart = protectedByStart;
             PipelineOperators = pipelineOperators;
@@ -152,6 +153,7 @@ public sealed class DocumentFormatter : IDocumentFormatter
             MultilineDelimiters = multilineDelimiters;
             OpenDelimiters = openDelimiters;
             CloseDelimiters = closeDelimiters;
+            BindingIndentationChanges = bindingIndentationChanges;
         }
 
         public IReadOnlyDictionary<int, ProtectedSpan> ProtectedByStart { get; }
@@ -160,6 +162,7 @@ public sealed class DocumentFormatter : IDocumentFormatter
         public IReadOnlySet<int> MultilineDelimiters { get; }
         public IReadOnlySet<int> OpenDelimiters { get; }
         public IReadOnlySet<int> CloseDelimiters { get; }
+        public IReadOnlyDictionary<int, int> BindingIndentationChanges { get; }
 
         public static Layout Create(SourceFileSyntax sourceFile)
         {
@@ -203,8 +206,17 @@ public sealed class DocumentFormatter : IDocumentFormatter
             var closeDelimiters = intervals.Select(interval => interval.Span.End - 1).ToHashSet();
             var multilineDelimiters = FindMultilineDelimiters(
                 sourceFile.Text, protectedSpans.Values, openDelimiters, closeDelimiters);
+            var bindingIndentationChanges = DescendantsAndSelf(sourceFile)
+                .OfType<InputBindingExpressionSyntax>()
+                .SelectMany(binding => new[]
+                {
+                    (Position: binding.Body.Span.Start, Change: 1),
+                    (Position: binding.Body.Span.End, Change: -1)
+                })
+                .GroupBy(change => change.Position)
+                .ToDictionary(group => group.Key, group => group.Sum(change => change.Change));
             return new(protectedSpans, pipelineOperators, multilinePipelineOperators, multilineDelimiters,
-                openDelimiters, closeDelimiters);
+                openDelimiters, closeDelimiters, bindingIndentationChanges);
         }
 
         private static bool HasLineBreakImmediatelyBefore(string source, int position)
@@ -334,6 +346,9 @@ public sealed class DocumentFormatter : IDocumentFormatter
 
         public void Write(FormatToken token)
         {
+            if (layout.BindingIndentationChanges.TryGetValue(token.Start, out var indentationChange))
+                indentation = Math.Max(0, indentation + indentationChange);
+
             switch (token.Kind)
             {
                 case TokenKind.OpenDelimiter:

@@ -52,6 +52,21 @@ public sealed class FunctionLifecycleDiagnosticServiceTests
             Is.EqualTo("Function 'legacy' is deprecated."));
     }
 
+    [Test]
+    public void GetDiagnostics_DeprecatedFunctionInsideInputBoundBody_ReportsDiagnostic()
+    {
+        var service = new FunctionLifecycleDiagnosticService(new TestFunctionCatalog(
+        [
+            new("append", [], [], "Append text.", "Text", true, "suffix")
+        ]));
+        const string text = "10 | input :> @input | append";
+
+        var diagnostic = service.GetDiagnostics(Parse(text)).Single();
+
+        Assert.That(diagnostic.IdentifierStart,
+            Is.EqualTo(text.IndexOf("append", StringComparison.Ordinal)));
+    }
+
     private static Expressif.Syntax.RootExpressionSyntax Parse(string text)
     {
         var result = new SyntaxService().Parse(text);

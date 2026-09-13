@@ -2,6 +2,7 @@ using Expressif.LanguageServer.Core.Documents;
 using Expressif.LanguageServer.Core.Scopes;
 using Expressif.LanguageServer.Core.Syntax;
 using Expressif.Semantics;
+using Expressif.Syntax;
 using NUnit.Framework;
 
 namespace Expressif.LanguageServer.Core.Tests;
@@ -49,6 +50,7 @@ public sealed class FieldScopeServiceTests
     [TestCase("unknown | .name", 10)]
     [TestCase("unknown(.name)", 9)]
     [TestCase("map(.name |", 5)]
+    [TestCase("10 | input :>", 5)]
     [TestCase(".name", -1)]
     [TestCase(".name", 5)]
     [TestCase(".name ", 5)]
@@ -94,6 +96,49 @@ public sealed class FieldScopeServiceTests
         const string text = ".items | map(.name | suffix(^^.a))";
         Assert.That(service.GetScope(Open(text), text.IndexOf('^'))?.Description, Does.Contain("enclosing expression's input"));
         Assert.That(service.GetScope(Open("map(.a)"), 4)?.Description, Does.Contain("each element"));
+    }
+
+    [TestCase("{name := 1} | input :> @input", "@input", "{name := 1}")]
+    [TestCase("T(10, 20) | (left, right) :> @right", "@right", "T(10, 20)")]
+    [TestCase("10 | outer :> 20 | inner :> @inner", "@inner", "20")]
+    [TestCase("10 | value :> 20 | value :> @value", "@value", "20")]
+    public void InputBindingReference_SelectsSupplyingRegion(
+        string text, string selection, string supplier)
+    {
+        var scope = service.GetScope(Open(text), text.LastIndexOf(selection, StringComparison.Ordinal));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(scope, Is.Not.Null);
+            Assert.That(scope!.Supplier, Is.Not.Null);
+            Assert.That(text.Substring(scope.Supplier!.Value.Start, scope.Supplier.Value.Length),
+                Is.EqualTo(supplier));
+            Assert.That(scope.Description, Does.Contain("input bound"));
+        });
+    }
+
+    [Test]
+    public void InputBindingDeclaration_SelectsSupplyingRegion()
+    {
+        const string text = "{name := 1} | input :> @input";
+
+        var scope = service.GetScope(Open(text), text.IndexOf("input", StringComparison.Ordinal));
+
+        Assert.That(scope?.Supplier, Is.EqualTo(new SourceSpan(0, "{name := 1}".Length)));
+        Assert.That(scope?.Description, Does.Contain("Declares '@input'"));
+    }
+
+    [TestCase("{name := 1} | :> .name", ".name", "{name := 1}")]
+    [TestCase("{name := 1} | input :> @input | .name", ".name", "@input")]
+    public void InputBoundField_SelectsSupplyingRegion(
+        string text, string selection, string supplier)
+    {
+        var scope = service.GetScope(Open(text), text.IndexOf(selection, StringComparison.Ordinal));
+
+        Assert.That(scope?.Supplier, Is.Not.Null);
+        Assert.That(text.Substring(scope!.Supplier!.Value.Start, scope.Supplier.Value.Length),
+            Is.EqualTo(supplier));
+        Assert.That(scope.Description, Does.Contain("input-bound expression"));
     }
 
     private static DocumentSnapshot Open(string text) => new DocumentStore(new SyntaxService()).Open(Uri, text, 1);

@@ -97,6 +97,18 @@ public sealed class FunctionHoverServiceTests
     }
 
     [Test]
+    public void GetHover_FunctionInsideInputBoundBody_ReturnsDocumentation()
+    {
+        const string text = "10 | input :> @input | upper";
+        var cursor = text.IndexOf("upper", StringComparison.Ordinal);
+
+        var result = service.GetHover(Parse(text), cursor);
+
+        Assert.That(result?.Signature, Is.EqualTo("upper()"));
+        Assert.That(result?.IdentifierStart, Is.EqualTo(cursor));
+    }
+
+    [Test]
     public void GetHover_DeprecatedFunction_IncludesReplacementAndSunset()
     {
         var service = new FunctionHoverService(new TestFunctionCatalog(

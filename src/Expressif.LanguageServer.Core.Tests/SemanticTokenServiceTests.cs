@@ -113,6 +113,57 @@ public sealed class SemanticTokenServiceTests
             Is.EqualTo("/* first line\r\nsecond line */"));
     }
 
+    [Test]
+    public void GetTokens_NamedInputBinding_ClassifiesDeclarationOperatorAndReference()
+    {
+        const string text = "10 | input :> @input | upper";
+
+        var tokens = GetTokens(text);
+
+        Assert.That(tokens.Select(token => (text.Substring(token.Start, token.Length), token.Kind)),
+            Is.EqualTo(new[]
+            {
+                ("10", SemanticTokenKind.Number),
+                ("|", SemanticTokenKind.Operator),
+                ("input", SemanticTokenKind.Variable),
+                (":>", SemanticTokenKind.Operator),
+                ("@input", SemanticTokenKind.Variable),
+                ("|", SemanticTokenKind.Operator),
+                ("upper", SemanticTokenKind.Function)
+            }));
+    }
+
+    [Test]
+    public void GetTokens_PositionalInputBinding_ClassifiesEveryDeclaration()
+    {
+        const string text = "T(10, 20) | (left, right) :> @left | add(@right)";
+
+        var tokens = GetTokens(text);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(tokens.Where(token => token.Kind == SemanticTokenKind.Variable)
+                .Select(token => text.Substring(token.Start, token.Length)),
+                Is.EqualTo(new[] { "left", "right", "@left", "@right" }));
+            Assert.That(tokens.Where(token => token.Kind == SemanticTokenKind.Operator)
+                .Select(token => text.Substring(token.Start, token.Length)),
+                Does.Contain(":>"));
+        });
+    }
+
+    [Test]
+    public void GetTokens_MultilineAnonymousInputBinding_ClassifiesExactOperatorRange()
+    {
+        const string text = "10\n| :>\n.first";
+
+        var bindingOperator = GetTokens(text)
+            .Single(token => text.Substring(token.Start, token.Length) == ":>");
+
+        Assert.That(bindingOperator,
+            Is.EqualTo(new SemanticTokenSpan(text.IndexOf(":>", StringComparison.Ordinal), 2,
+                SemanticTokenKind.Operator)));
+    }
+
     private IReadOnlyList<SemanticTokenSpan> GetTokens(string text)
     {
         var parsed = syntax.Parse(text);

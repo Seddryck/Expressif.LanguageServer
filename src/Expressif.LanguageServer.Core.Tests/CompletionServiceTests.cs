@@ -104,6 +104,23 @@ public sealed class CompletionServiceTests
         Assert.That(result, Is.Empty);
     }
 
+    [TestCase("~upp", 1, 3)]
+    [TestCase("upp~", 0, 3)]
+    public void GetCompletions_TupleBindingShorthand_ReplacesOnlyCallableName(
+        string text, int expectedStart, int expectedLength)
+    {
+        var cursor = text.IndexOf('~') == 0 ? text.Length : text.IndexOf('~');
+
+        var suggestion = service.GetCompletions(text, cursor)
+            .Single(item => item.Label == "upper");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(suggestion.ReplacementStart, Is.EqualTo(expectedStart));
+            Assert.That(suggestion.ReplacementLength, Is.EqualTo(expectedLength));
+        });
+    }
+
     [Test]
     public void GetCompletions_CursorInsideFunctionName_ReplacesWholeToken()
     {

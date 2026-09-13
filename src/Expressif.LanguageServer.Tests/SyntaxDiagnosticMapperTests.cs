@@ -1,6 +1,8 @@
+using Expressif.LanguageServer.Core.Diagnostics;
 using Expressif.LanguageServer.Diagnostics;
 using Expressif.Syntax;
 using NUnit.Framework;
+using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Range = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Expressif.LanguageServer.Tests;
@@ -8,6 +10,26 @@ namespace Expressif.LanguageServer.Tests;
 [TestFixture]
 public sealed class SyntaxDiagnosticMapperTests
 {
+    [Test]
+    public void Map_ImplicitBindingMigration_UsesWarningCodeTagAndExactRange()
+    {
+        const string source = "10 | adjacent(subtract)";
+        var migration = new ImplicitBindingMigration(
+            "adjacent", "subtract", "implicit-tuple-binding",
+            "Implicit argument injection is deprecated.", 14, 8, []);
+
+        var diagnostic = SyntaxDiagnosticMapper.Map(source, migration);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Warning));
+            Assert.That(diagnostic.Code?.String, Is.EqualTo("implicit-tuple-binding"));
+            Assert.That(diagnostic.Tags, Does.Contain(DiagnosticTag.Deprecated));
+            Assert.That(diagnostic.Range, Is.EqualTo(
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(0, 14, 0, 22)));
+        });
+    }
+
     [Test]
     public void Map_ParserSpan_ProducesExactLspRange()
     {

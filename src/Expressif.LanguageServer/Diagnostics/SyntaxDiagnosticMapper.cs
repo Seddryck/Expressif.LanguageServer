@@ -48,6 +48,17 @@ internal static class SyntaxDiagnosticMapper
         Code = "deprecated-tuple-notation"
     };
 
+    public static Diagnostic Map(string source, ImplicitBindingMigration migration) => new()
+    {
+        Message = migration.Message,
+        Range = new Range(ToPosition(source, migration.Start),
+            ToPosition(source, migration.Start + migration.Length)),
+        Severity = DiagnosticSeverity.Warning,
+        Tags = new Container<DiagnosticTag>(DiagnosticTag.Deprecated),
+        Source = "expressif",
+        Code = migration.Code
+    };
+
     public static Diagnostic Map(string source, FunctionCallDiagnostic diagnostic)
     {
         return new Diagnostic

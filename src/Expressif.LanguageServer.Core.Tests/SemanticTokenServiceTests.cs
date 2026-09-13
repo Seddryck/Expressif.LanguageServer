@@ -164,6 +164,35 @@ public sealed class SemanticTokenServiceTests
                 SemanticTokenKind.Operator)));
     }
 
+    [TestCase("~subtract", "~", "subtract")]
+    [TestCase("subtract~", "~", "subtract")]
+    [TestCase("~greater-than", "~", "greater-than")]
+    public void GetTokens_TupleBindingShorthand_ClassifiesTildeAndCallable(
+        string text, string expectedOperator, string expectedFunction)
+    {
+        var tokens = GetTokens(text);
+
+        Assert.That(tokens.Select(token => (text.Substring(token.Start, token.Length), token.Kind)),
+            Is.EqualTo(new[]
+            {
+                (text.StartsWith('~') ? expectedOperator : expectedFunction,
+                    text.StartsWith('~') ? SemanticTokenKind.Operator : SemanticTokenKind.Function),
+                (text.StartsWith('~') ? expectedFunction : expectedOperator,
+                    text.StartsWith('~') ? SemanticTokenKind.Function : SemanticTokenKind.Operator)
+            }));
+    }
+
+    [Test]
+    public void GetTokens_QuotedTilde_RemainsAString()
+    {
+        const string text = "\"~subtract and greater-than~\"";
+
+        Assert.That(GetTokens(text), Is.EqualTo(new[]
+        {
+            new SemanticTokenSpan(0, text.Length, SemanticTokenKind.String)
+        }));
+    }
+
     private IReadOnlyList<SemanticTokenSpan> GetTokens(string text)
     {
         var parsed = syntax.Parse(text);

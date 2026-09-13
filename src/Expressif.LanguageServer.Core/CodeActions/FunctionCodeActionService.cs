@@ -1,4 +1,5 @@
 using Expressif.LanguageServer.Core.Functions;
+using Expressif.LanguageServer.Core.Syntax;
 using Expressif.Syntax;
 
 namespace Expressif.LanguageServer.Core.CodeActions;
@@ -13,11 +14,10 @@ public sealed class FunctionCodeActionService(IFunctionCatalog functions) : IFun
             throw new ArgumentOutOfRangeException(nameof(selectionStart));
 
         var selectionEnd = (long)selectionStart + selectionLength;
-        return DescendantsAndSelf(syntaxTree)
-            .OfType<FunctionCallSyntax>()
+        return CallableSyntaxReference.DescendantsOf(syntaxTree)
             .Where(call => selectionLength == 0
-                ? selectionStart >= call.Span.Start && selectionStart <= call.Span.Start + call.Name.Length
-                : selectionStart < call.Span.Start + call.Name.Length && selectionEnd > call.Span.Start)
+                ? selectionStart >= call.NameSpan.Start && selectionStart <= call.NameSpan.End
+                : selectionStart < call.NameSpan.End && selectionEnd > call.NameSpan.Start)
             .Select(call => (Call: call, Metadata: FindFunction(call.Name)))
             .Where(match => match.Metadata is
             {
@@ -28,20 +28,12 @@ public sealed class FunctionCodeActionService(IFunctionCatalog functions) : IFun
             .Select(match => new FunctionReplacement(
                 match.Call.Name,
                 match.Metadata!.Replacement!,
-                match.Call.Span.Start,
-                match.Call.Name.Length))
+                match.Call.NameSpan.Start,
+                match.Call.NameSpan.Length))
             .ToArray();
     }
 
     private FunctionMetadata? FindFunction(string name) => functions.Functions.FirstOrDefault(function =>
         function.Name.Equals(name, StringComparison.OrdinalIgnoreCase) ||
         function.Aliases.Contains(name, StringComparer.OrdinalIgnoreCase));
-
-    private static IEnumerable<SyntaxNode> DescendantsAndSelf(SyntaxNode node)
-    {
-        yield return node;
-        foreach (var child in node.Children)
-        foreach (var descendant in DescendantsAndSelf(child))
-            yield return descendant;
-    }
 }

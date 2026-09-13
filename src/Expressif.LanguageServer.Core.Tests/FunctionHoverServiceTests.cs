@@ -108,6 +108,22 @@ public sealed class FunctionHoverServiceTests
         Assert.That(result?.IdentifierStart, Is.EqualTo(cursor));
     }
 
+    [TestCase("~lower", 2, 1)]
+    [TestCase("lower~", 2, 0)]
+    [TestCase("~text-to-lower", 5, 1)]
+    public void GetHover_TupleBindingShorthand_ResolvesUnderlyingCallable(
+        string text, int cursor, int expectedStart)
+    {
+        var result = service.GetHover(Parse(text), cursor);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result?.Signature, Is.EqualTo("lower()"));
+            Assert.That(result?.IdentifierStart, Is.EqualTo(expectedStart));
+            Assert.That(result?.IdentifierLength, Is.EqualTo(text.Trim('~').Length));
+        });
+    }
+
     [Test]
     public void GetHover_DeprecatedFunction_IncludesReplacementAndSunset()
     {
@@ -131,6 +147,23 @@ public sealed class FunctionHoverServiceTests
         ]));
 
         Assert.That(service.GetHover(Parse("legacy()"), 2)?.LifecycleNotice, Is.EqualTo("Deprecated."));
+    }
+
+    [Test]
+    public void GetHover_ImplicitBinding_ExplainsUsageSpecificDeprecation()
+    {
+        const string text = "{1, 2, 5} | adjacent(subtract)";
+        var service = new FunctionHoverService(new TestFunctionCatalog(
+        [
+            new("adjacent", [], [], "Adjacent pairs.", "Array"),
+            new("subtract", [], [], "Subtracts a value.", "Numeric")
+        ]));
+
+        var result = service.GetHover(Parse(text), text.IndexOf("subtract", StringComparison.Ordinal));
+
+        Assert.That(result?.LifecycleNotice, Is.EqualTo(
+            "Deprecated usage. Implicit argument injection into 'subtract' is deprecated; " +
+            "use an explicit binding expression."));
     }
 
     [TestCase("\"upper\"", 2)]

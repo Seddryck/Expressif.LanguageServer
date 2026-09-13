@@ -1,21 +1,27 @@
+using Expressif.LanguageServer.Core.Diagnostics;
 using Expressif.LanguageServer.Core.Functions;
+using Expressif.LanguageServer.Core.Syntax;
 using Expressif.Syntax;
 
 namespace Expressif.LanguageServer.Core.Hover;
 
-public sealed class FunctionHoverService(IFunctionCatalog functions) : IFunctionHoverService
+public sealed class FunctionHoverService(
+    IFunctionCatalog functions,
+    IImplicitBindingMigrationService? implicitBindings = null) : IFunctionHoverService
 {
+    private readonly IImplicitBindingMigrationService implicitBindings =
+        implicitBindings ?? new ImplicitBindingMigrationService();
+
     public FunctionHover? GetHover(RootExpressionSyntax syntaxTree, int cursorOffset)
     {
         ArgumentNullException.ThrowIfNull(syntaxTree);
         if (cursorOffset < 0 || cursorOffset > syntaxTree.Text.Length)
             throw new ArgumentOutOfRangeException(nameof(cursorOffset));
 
-        var call = DescendantsAndSelf(syntaxTree)
-            .OfType<FunctionCallSyntax>()
-            .Where(function => cursorOffset >= function.Span.Start &&
-                               cursorOffset < function.Span.Start + function.Name.Length)
-            .OrderBy(function => function.Span.Length)
+        var call = CallableSyntaxReference.DescendantsOf(syntaxTree)
+            .Where(function => cursorOffset >= function.NameSpan.Start &&
+                               cursorOffset < function.NameSpan.End)
+            .OrderBy(function => function.NameSpan.Length)
             .FirstOrDefault();
         if (call is null)
             return null;
@@ -27,12 +33,17 @@ public sealed class FunctionHoverService(IFunctionCatalog functions) : IFunction
             return null;
 
         var parameters = string.Join(", ", metadata.Parameters.Select(parameter => parameter.Label));
+        var implicitBinding = implicitBindings.GetMigrations(syntaxTree)
+            .FirstOrDefault(migration => cursorOffset >= migration.Start &&
+                                         cursorOffset < migration.Start + migration.Length);
         return new FunctionHover(
             $"{metadata.Name}({parameters})",
             metadata.Description,
-            call.Span.Start,
-            call.Name.Length,
-            CreateLifecycleNotice(metadata));
+            call.NameSpan.Start,
+            call.NameSpan.Length,
+            implicitBinding is null
+                ? CreateLifecycleNotice(metadata)
+                : $"Deprecated usage. {implicitBinding.Message}");
     }
 
     private static string? CreateLifecycleNotice(FunctionMetadata function)
@@ -46,13 +57,5 @@ public sealed class FunctionHoverService(IFunctionCatalog functions) : IFunction
         if (!string.IsNullOrWhiteSpace(function.Sunset))
             notice += $"\nSunset: Expressif {function.Sunset}.";
         return notice;
-    }
-
-    private static IEnumerable<SyntaxNode> DescendantsAndSelf(SyntaxNode node)
-    {
-        yield return node;
-        foreach (var child in node.Children)
-        foreach (var descendant in DescendantsAndSelf(child))
-            yield return descendant;
     }
 }

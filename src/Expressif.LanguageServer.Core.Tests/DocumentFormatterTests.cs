@@ -62,6 +62,55 @@ public sealed class DocumentFormatterTests
     }
 
     [Test]
+    public void Format_MultilineNamedInputBinding_IndentsBody()
+    {
+        const string source = """
+            {taxRate := 0.20, prices := {100, 200, 50}}
+            | source :>
+            .prices
+            | map(
+                multiply(
+                    @source
+                    | .taxRate
+                    | add(1)
+                    | add(@source | .prices | cardinality)
+                )
+            )
+            """;
+
+        var formatted = Format(source);
+        const string expected = """
+            {taxRate := 0.20, prices := {100, 200, 50}}
+            | source :>
+                .prices
+                | map(
+                    multiply(
+                        @source
+                        | .taxRate
+                        | add(1)
+                        | add(@source | .prices | cardinality)
+                    )
+                )
+            """;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(formatted, Is.EqualTo(expected));
+            Assert.That(Format(formatted), Is.EqualTo(formatted));
+        });
+    }
+
+    [Test]
+    public void Format_MultilineAnonymousInputBinding_UsesConfiguredIndentation()
+    {
+        const string source = "10\n| :>\n.first\n| upper";
+
+        var formatted = Format(source, insertSpaces: false);
+
+        Assert.That(formatted, Is.EqualTo("10\n| :>\n\t.first\n\t| upper"));
+    }
+
+    [Test]
     public void Format_CommentsAndQuotedOperators_PreservesTheirContents()
     {
         const string source = "// leading\nlower(/* inner */ \"a | b\")  | trim // trailing";

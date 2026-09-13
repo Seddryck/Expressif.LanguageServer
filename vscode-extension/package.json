@@ -23,7 +23,8 @@
   ],
   "activationEvents": [
     "onLanguage:expressif",
-    "onCommand:expressif.runExpression"
+    "onCommand:expressif.runExpression",
+    "onCommand:expressif.runExpressionWithPreviousSelections"
   ],
   "main": "./dist/extension.js",
   "files": [
@@ -42,6 +43,11 @@
         "title": "Run Expression",
         "category": "Expressif",
         "icon": "$(play)"
+      },
+      {
+        "command": "expressif.runExpressionWithPreviousSelections",
+        "title": "Run Expression with Last Input and Output",
+        "category": "Expressif"
       }
     ],
     "menus": {
@@ -65,6 +71,12 @@
         "command": "expressif.runExpression",
         "key": "ctrl+enter",
         "mac": "cmd+enter",
+        "when": "editorTextFocus && editorLangId == expressif"
+      },
+      {
+        "command": "expressif.runExpressionWithPreviousSelections",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
         "when": "editorTextFocus && editorLangId == expressif"
       }
     ],

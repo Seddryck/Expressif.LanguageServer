@@ -11,6 +11,8 @@ import {
 
 let client: LanguageClient | undefined;
 let previousInput: EvaluationInput | undefined;
+let lastSelectedInput: EvaluationInput | undefined;
+let lastSelectedOutputFormat: EvaluationOutputFormat | undefined;
 let lastDataEditor: vscode.TextEditor | undefined;
 let lastExpressionEditor: vscode.TextEditor | undefined;
 
@@ -61,7 +63,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(client);
   context.subscriptions.push(vscode.commands.registerCommand(
     'expressif.runExpression',
-    () => runExpression(evaluationChannel)
+    () => runExpression(evaluationChannel, false)
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand(
+    'expressif.runExpressionWithPreviousSelections',
+    () => runExpression(evaluationChannel, true)
   ));
   outputChannel.appendLine(`Starting ${executable.command}`);
 
@@ -73,7 +79,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 }
 
-async function runExpression(outputChannel: vscode.OutputChannel): Promise<void> {
+async function runExpression(
+  outputChannel: vscode.OutputChannel,
+  reuseSelections: boolean
+): Promise<void> {
   const activeEditor = vscode.window.activeTextEditor;
   const expressionEditor = activeEditor?.document.languageId === 'expressif'
     ? activeEditor
@@ -97,14 +106,21 @@ async function runExpression(outputChannel: vscode.OutputChannel): Promise<void>
   }
 
   try {
-    const selectedInput = await selectEvaluationInput(expressionEditor);
+    const selectedInput = reuseSelections && lastSelectedInput
+      ? lastSelectedInput
+      : await selectEvaluationInput(expressionEditor);
     if (!selectedInput) {
       return;
     }
-    const outputFormat = await selectEvaluationOutputFormat();
+    lastSelectedInput = selectedInput;
+
+    const outputFormat = reuseSelections && lastSelectedOutputFormat
+      ? lastSelectedOutputFormat
+      : await selectEvaluationOutputFormat();
     if (!outputFormat) {
       return;
     }
+    lastSelectedOutputFormat = outputFormat;
 
     const result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
       command: 'expressif.evaluateExpression',

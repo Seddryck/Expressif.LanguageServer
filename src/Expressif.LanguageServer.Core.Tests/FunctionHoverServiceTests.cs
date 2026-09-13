@@ -149,6 +149,23 @@ public sealed class FunctionHoverServiceTests
         Assert.That(service.GetHover(Parse("legacy()"), 2)?.LifecycleNotice, Is.EqualTo("Deprecated."));
     }
 
+    [Test]
+    public void GetHover_ImplicitBinding_ExplainsUsageSpecificDeprecation()
+    {
+        const string text = "{1, 2, 5} | adjacent(subtract)";
+        var service = new FunctionHoverService(new TestFunctionCatalog(
+        [
+            new("adjacent", [], [], "Adjacent pairs.", "Array"),
+            new("subtract", [], [], "Subtracts a value.", "Numeric")
+        ]));
+
+        var result = service.GetHover(Parse(text), text.IndexOf("subtract", StringComparison.Ordinal));
+
+        Assert.That(result?.LifecycleNotice, Is.EqualTo(
+            "Deprecated usage. Implicit argument injection into 'subtract' is deprecated; " +
+            "use an explicit binding expression."));
+    }
+
     [TestCase("\"upper\"", 2)]
     [TestCase(".name | upper", 6)]
     [TestCase("this-function-does-not-exist(1)", 4)]

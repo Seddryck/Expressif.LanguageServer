@@ -10,9 +10,13 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 namespace Expressif.LanguageServer.Handlers;
 
 public sealed class CodeActionHandler(IDocumentStore documents, IFunctionCodeActionService codeActions,
-    ILegacyTupleReferenceService tupleReferences)
+    ILegacyTupleReferenceService tupleReferences,
+    IImplicitBindingMigrationService? implicitBindings = null)
     : CodeActionHandlerBase
 {
+    private readonly IImplicitBindingMigrationService implicitBindings =
+        implicitBindings ?? new ImplicitBindingMigrationService();
+
     public override Task<CodeAction> Handle(CodeAction request, CancellationToken cancellationToken)
         => Task.FromResult(request);
 
@@ -75,6 +79,30 @@ public sealed class CodeActionHandler(IDocumentStore documents, IFunctionCodeAct
                         }
                     }
                 })))
+            .Concat(implicitBindings.GetMigrations(document.SyntaxTree)
+                .Where(migration => migration.Overlaps(start, end - start))
+                .SelectMany(migration => migration.Replacements.Select(replacement =>
+                    new CommandOrCodeAction(new CodeAction
+                    {
+                        Title = replacement.Title,
+                        Kind = CodeActionKind.QuickFix,
+                        IsPreferred = replacement.Preferred,
+                        Diagnostics = new Container<Diagnostic>(
+                            SyntaxDiagnosticMapper.Map(document.Text, migration)),
+                        Edit = new WorkspaceEdit
+                        {
+                            Changes = new Dictionary<DocumentUri, IEnumerable<TextEdit>>
+                            {
+                                [request.TextDocument.Uri] = [new TextEdit
+                                {
+                                    NewText = replacement.NewText,
+                                    Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                                        GetPosition(document.Text, migration.Start),
+                                        GetPosition(document.Text, migration.Start + migration.Length))
+                                }]
+                            }
+                        }
+                    }))))
             .ToArray();
         return Task.FromResult<CommandOrCodeActionContainer?>(new CommandOrCodeActionContainer(actions));
     }

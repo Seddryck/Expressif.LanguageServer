@@ -218,6 +218,37 @@ public sealed class TextDocumentSyncHandlerTests
         Assert.That(PublishedDiagnostics().Last().Version, Is.EqualTo(2));
     }
 
+    [Test]
+    public async Task Open_ImplicitBinding_PublishesWarningWithStableCodeAndDeprecatedTagAsync()
+    {
+        const string source = "{1, 2, 5} | adjacent(subtract)";
+        handler = new(new DocumentStore(new SyntaxService()), functionCallDiagnostics.Object,
+            lifecycleDiagnostics.Object,
+            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object),
+            new LegacyTupleReferenceService(), new ImplicitBindingMigrationService());
+
+        await handler.Handle(new DidOpenTextDocumentParams
+        {
+            TextDocument = new TextDocumentItem
+            {
+                Uri = DocumentUri,
+                LanguageId = "expressif",
+                Version = 1,
+                Text = source
+            }
+        }, CancellationToken.None);
+
+        var diagnostic = PublishedDiagnostics().Single().Diagnostics.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Code?.String, Is.EqualTo("implicit-tuple-binding"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Warning));
+            Assert.That(diagnostic.Tags, Does.Contain(DiagnosticTag.Deprecated));
+            Assert.That(diagnostic.Range, Is.EqualTo(
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(0, 21, 0, 29)));
+        });
+    }
+
     private Task OpenInvalidDocumentAsync() => handler.Handle(new DidOpenTextDocumentParams
     {
         TextDocument = new TextDocumentItem

@@ -16,8 +16,12 @@ public sealed class TextDocumentSyncHandler(
     IFunctionCallDiagnosticService functionCallDiagnostics,
     IFunctionLifecycleDiagnosticService lifecycleDiagnostics,
     ILanguageServerFacade server,
-    ILegacyTupleReferenceService tupleReferences) : TextDocumentSyncHandlerBase
+    ILegacyTupleReferenceService tupleReferences,
+    IImplicitBindingMigrationService? implicitBindings = null) : TextDocumentSyncHandlerBase
 {
+    private readonly IImplicitBindingMigrationService implicitBindings =
+        implicitBindings ?? new ImplicitBindingMigrationService();
+
     public override TextDocumentAttributes GetTextDocumentAttributes(DocumentUri uri) => new(uri, "expressif");
 
     public override Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
@@ -76,7 +80,9 @@ public sealed class TextDocumentSyncHandler(
                         .Concat(lifecycleDiagnostics.GetDiagnostics(document.SyntaxTree)
                             .Select(diagnostic => SyntaxDiagnosticMapper.Map(document.Text, diagnostic)))
                         .Concat(tupleReferences.GetReferences(document.SyntaxTree)
-                            .Select(reference => SyntaxDiagnosticMapper.Map(document.Text, reference))))
+                            .Select(reference => SyntaxDiagnosticMapper.Map(document.Text, reference)))
+                        .Concat(implicitBindings.GetMigrations(document.SyntaxTree)
+                            .Select(migration => SyntaxDiagnosticMapper.Map(document.Text, migration))))
                 .ToArray()
         });
     }

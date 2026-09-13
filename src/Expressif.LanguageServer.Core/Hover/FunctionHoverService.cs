@@ -1,11 +1,17 @@
+using Expressif.LanguageServer.Core.Diagnostics;
 using Expressif.LanguageServer.Core.Functions;
 using Expressif.LanguageServer.Core.Syntax;
 using Expressif.Syntax;
 
 namespace Expressif.LanguageServer.Core.Hover;
 
-public sealed class FunctionHoverService(IFunctionCatalog functions) : IFunctionHoverService
+public sealed class FunctionHoverService(
+    IFunctionCatalog functions,
+    IImplicitBindingMigrationService? implicitBindings = null) : IFunctionHoverService
 {
+    private readonly IImplicitBindingMigrationService implicitBindings =
+        implicitBindings ?? new ImplicitBindingMigrationService();
+
     public FunctionHover? GetHover(RootExpressionSyntax syntaxTree, int cursorOffset)
     {
         ArgumentNullException.ThrowIfNull(syntaxTree);
@@ -27,12 +33,17 @@ public sealed class FunctionHoverService(IFunctionCatalog functions) : IFunction
             return null;
 
         var parameters = string.Join(", ", metadata.Parameters.Select(parameter => parameter.Label));
+        var implicitBinding = implicitBindings.GetMigrations(syntaxTree)
+            .FirstOrDefault(migration => cursorOffset >= migration.Start &&
+                                         cursorOffset < migration.Start + migration.Length);
         return new FunctionHover(
             $"{metadata.Name}({parameters})",
             metadata.Description,
             call.NameSpan.Start,
             call.NameSpan.Length,
-            CreateLifecycleNotice(metadata));
+            implicitBinding is null
+                ? CreateLifecycleNotice(metadata)
+                : $"Deprecated usage. {implicitBinding.Message}");
     }
 
     private static string? CreateLifecycleNotice(FunctionMetadata function)

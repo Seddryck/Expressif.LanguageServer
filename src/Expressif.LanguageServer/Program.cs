@@ -38,7 +38,7 @@ public static class Program
                 services.AddSingleton<IFunctionCatalog, ExpressifFunctionCatalog>();
                 services.AddSingleton<ICompletionService, CompletionService>();
                 services.AddSingleton<IFunctionHoverService, FunctionHoverService>();
-                services.AddSingleton<IFieldScopeService, FieldScopeService>();
+                services.AddSingleton<IReferenceScopeService, ReferenceScopeService>();
                 services.AddSingleton<IFunctionSignatureHelpService, FunctionSignatureHelpService>();
                 services.AddSingleton<ISemanticTokenService, SemanticTokenService>();
                 services.AddSingleton<IFunctionCallDiagnosticService, FunctionCallDiagnosticService>();

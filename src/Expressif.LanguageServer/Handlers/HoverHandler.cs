@@ -7,7 +7,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 namespace Expressif.LanguageServer.Handlers;
 
-public sealed class HoverHandler(IDocumentStore documents, IFunctionHoverService hovers, IFieldScopeService scopes) : HoverHandlerBase
+public sealed class HoverHandler(IDocumentStore documents, IFunctionHoverService hovers, IReferenceScopeService scopes) : HoverHandlerBase
 {
     public override Task<Hover?> Handle(HoverParams request, CancellationToken cancellationToken)
     {

@@ -10,7 +10,7 @@ namespace Expressif.LanguageServer.Core.Tests;
 [TestFixture]
 public sealed class FieldScopeServiceTests
 {
-    private readonly FieldScopeService service = new();
+    private readonly ReferenceScopeService service = new();
     private static readonly Uri Uri = new("file:///scope.expr");
 
     [TestCase("{name := 1} | .name", ".name", "{name := 1}")]
@@ -139,6 +139,48 @@ public sealed class FieldScopeServiceTests
         Assert.That(text.Substring(scope!.Supplier!.Value.Start, scope.Supplier.Value.Length),
             Is.EqualTo(supplier));
         Assert.That(scope.Description, Does.Contain("input-bound expression"));
+    }
+
+    [TestCase("T(.country, .year, .amount) | add($0)", "$0", ".country")]
+    [TestCase("T(.country, .year, .amount) | add($1)", "$1", ".year")]
+    [TestCase("T(.country, .year, .amount) | add($2)", "$2", ".amount")]
+    [TestCase("T(10, 20, 30) | $1", "$1", "20")]
+    public void TupleReference_SelectsSupplyingTupleElement(
+        string text, string selection, string supplier)
+    {
+        var scope = service.GetScope(Open(text), text.IndexOf(selection, StringComparison.Ordinal));
+
+        Assert.That(scope?.Supplier, Is.Not.Null);
+        Assert.That(text.Substring(scope!.Supplier!.Value.Start, scope.Supplier.Value.Length),
+            Is.EqualTo(supplier));
+        Assert.That(scope.Description, Does.Contain("referenced tuple element"));
+    }
+
+    [Test]
+    public void NestedTupleReference_SelectsNearestSupplyingTupleElement()
+    {
+        const string text = "T(.country, .year) | add(T(.name, .age) | add($1))";
+
+        var scope = service.GetScope(Open(text), text.IndexOf("$1", StringComparison.Ordinal));
+
+        Assert.That(scope?.Supplier, Is.Not.Null);
+        Assert.That(text.Substring(scope!.Supplier!.Value.Start, scope.Supplier.Value.Length),
+            Is.EqualTo(".age"));
+    }
+
+    [TestCase("$0")]
+    [TestCase("T(10, 20) | neutral | $0")]
+    [TestCase("T(10, 20) | map($0)")]
+    [TestCase("T(...@values, 20) | $1")]
+    [TestCase("T(10, 20) | $2")]
+    public void UnmappableTupleReference_HasScopeWithoutHighlight(string text)
+    {
+        var offset = text.LastIndexOf('$');
+
+        var scope = service.GetScope(Open(text), offset);
+
+        Assert.That(scope, Is.Not.Null);
+        Assert.That(scope!.Supplier, Is.Null);
     }
 
     private static DocumentSnapshot Open(string text) => new DocumentStore(new SyntaxService()).Open(Uri, text, 1);

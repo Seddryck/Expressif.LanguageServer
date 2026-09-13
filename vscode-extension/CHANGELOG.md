@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Open evaluation results as reusable read-only editor documents beside the Expressif script.
+- Include public aggregations in function completion, hover, signature help, and diagnostics.
 - Add persistent compact/pretty evaluation output settings with configurable pretty indentation.
 - Highlight deprecated implicit tuple binding and offer safe migrations to `~function` or `function~`.
 - Support completion, hover, semantic highlighting, and callable-aware actions for explicit tuple-binding shorthand.

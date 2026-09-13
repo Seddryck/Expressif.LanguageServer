@@ -1,3 +1,4 @@
+using Expressif.Accumulators.Introspection;
 using Expressif.Functions.Introspection;
 using Expressif.Predicates.Introspection;
 
@@ -48,8 +49,25 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
                 predicate.Scope))
             .ToArray();
 
+        var aggregations = new AccumulatorIntrospector()
+            .Describe()
+            .Where(aggregation => aggregation.IsPublic)
+            .Select(aggregation => new FunctionMetadata(
+                aggregation.Name,
+                aggregation.Aliases.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
+                aggregation.Parameters.Select(parameter => new FunctionParameterMetadata(
+                    parameter.Name,
+                    parameter.Optional,
+                    parameter.Summary,
+                    parameter.Variadic,
+                    parameter.MinimumCardinality)).ToArray(),
+                aggregation.Summary,
+                aggregation.Scope))
+            .ToArray();
+
         return functions
             .Concat(predicates)
+            .Concat(aggregations)
             .OrderBy(function => function.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 

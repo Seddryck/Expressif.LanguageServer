@@ -35,6 +35,19 @@ public sealed class ExpressifFunctionCatalogTests
     }
 
     [Test]
+    public void Functions_IncludePublicAggregations()
+    {
+        var functions = new ExpressifFunctionCatalog().Functions;
+
+        var aggregation = functions.Single(function => function.Name == "sum");
+        Assert.Multiple(() =>
+        {
+            Assert.That(aggregation.Category, Is.EqualTo("Array"));
+            Assert.That(aggregation.Description, Is.Not.Empty);
+        });
+    }
+
+    [Test]
     public void Functions_DeprecatedAppend_ExposesLifecycleMetadataAndUnsafeReplacement()
     {
         var function = new ExpressifFunctionCatalog().Functions.Single(item => item.Name == "append");

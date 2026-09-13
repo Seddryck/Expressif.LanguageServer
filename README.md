@@ -2,13 +2,11 @@
 
 ![Expressif logo](https://raw.githubusercontent.com/Seddryck/Expressif.LanguageServer/main/assets/expressif-icon-256.png)
 
-Transform your structured YAML, JSON, XML, CSV or FrontMatter data into beautiful, fully-customized HTML pages or plain text in seconds with Expressif.LanguageServer. This command-line tool seamlessly generates renders from data files using your preferred templates through Scriban, Handlebars, DotLiquid, Fluid, StringTemplate or SmartFormat. Whether you're building static sites, documentation, or reporting tools, Expressif.LanguageServer makes it easy to turn raw data into polished, web-ready content.
+Language Server Protocol support for [Expressif](https://github.com/Seddryck/Expressif), bringing diagnostics, completion, hover information, signature help, semantic highlighting, formatting, quick fixes and expression evaluation to your editor.
 
-[About][] | [Installing][] | [Quickstart][]
+The repository also contains **Expressif Language Support**, a thin Visual Studio Code client that bundles and connects to the language server.
 
-[About]: #about (About)
-[Installing]: #installing (Installing)
-[Quickstart]: #quickstart (Quickstart)
+[About](#about) | [Features](#features) | [Installing](#installing) | [Using Visual Studio Code](#using-visual-studio-code) | [Development](#development)
 
 ## About
 
@@ -31,228 +29,143 @@ Transform your structured YAML, JSON, XML, CSV or FrontMatter data into beautifu
 [![Bugs badge](https://img.shields.io/github/issues/Seddryck/Expressif.LanguageServer/bug.svg?color=red&label=Bugs)](https://github.com/Seddryck/Expressif.LanguageServer/issues?utf8=%E2%9C%93&q=is:issue+is:open+label:bug+)
 [![Top language](https://img.shields.io/github/languages/top/seddryck/Expressif.LanguageServer.svg)](https://github.com/Seddryck/Expressif.LanguageServer/search?l=C%23)
 
+## Features
+
+Expressif.LanguageServer exposes editor-independent language features through the Language Server Protocol.
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| Diagnostics | ✅ | Reports syntax errors, invalid function calls, lifecycle/deprecation warnings and supported migration warnings. |
+| Function completion | ✅ | Completes Expressif functions and aliases using the shared function catalog. |
+| Hover | ✅ | Shows function information and contextual information for fields and input bindings. |
+| Signature help | ✅ | Shows function signatures and the active parameter while editing calls. |
+| Semantic highlighting | ✅ | Provides semantic tokens for Expressif language constructs. |
+| Document highlights | ✅ | Highlights relationships between field references and their supplying expressions. |
+| Document formatting | ✅ | Formats complete Expressif documents using the server's canonical formatting rules. |
+| Quick fixes | ✅ | Offers supported replacements for deprecated functions, legacy tuple references and binding migrations. |
+| Expression evaluation | ✅ | Evaluates a selection or complete Expressif document with optional input data. |
+| On-type formatting | Planned | Tracked by [#67](https://github.com/Seddryck/Expressif.LanguageServer/issues/67). |
+| Type-aware completion ranking | Planned | Tracked by [#58](https://github.com/Seddryck/Expressif.LanguageServer/issues/58). |
+| Go to definition / references / rename | — | Not currently implemented. |
+
+The language server communicates with editors over standard input and output. Editor-specific behavior belongs in thin clients such as the VS Code extension.
+
 ## Installing
 
-### Install from GitHub Releases
+### Visual Studio Code
 
-#### Step 1: Download the ZIP from the GitHub Release
+The recommended way to use Expressif.LanguageServer today is through the **Expressif Language Support** VS Code extension.
 
-1. Navigate to the **GitHub repository** of the project.
-2. Go to the **Releases** section, usually found under the "Code" tab.
-3. Download the `.zip` file containing the executable from the desired release.
+Download the `.vsix` package from the [latest GitHub release](https://github.com/Seddryck/Expressif.LanguageServer/releases/latest), then install it from **Extensions → … → Install from VSIX…**.
 
-Example:
+It can also be installed from the command line:
 
-   ```
-   https://github.com/Seddryck/Expressif.LanguageServer/releases/latest/
-   ```
-
-#### Step 2: Extract the ZIP File
-
-1. Right-click the downloaded `.zip` file and choose **Extract All**.
-2. Extract the contents to a directory of your choice, such as `C:\Program Files\Expressif.LanguageServer`.
-
-> **Tip**: Choose a path that is easy to remember and doesn't contain special characters.
-
-#### Step 3: Add the Executable to the System PATH
-
-To run the executable from any location in the command line, you need to add its folder to your system's PATH.
-
-1. Open the **Start Menu** and search for **Environment Variables**.
-2. Click **Edit the system environment variables**.
-3. In the **System Properties** window, click **Environment Variables**.
-4. In the **System Variables** section, scroll down, select **Path**, and click **Edit**.
-5. In the **Edit Environment Variable** dialog, click **New** and enter the path to your extracted folder, e.g., `C:\Program Files\Expressif.LanguageServer`.
-6. Click **OK** to close all windows.
-
-### Step 4: Verify Installation
-
-1. Open **Command Prompt** (CMD).
-2. Type `Expressif-LanguageServer.exe` and hit Enter.
-3. If everything is set up correctly, the program should run.
-
-## QuickStart
-
-**Expressif.LanguageServer** is a command-line tool designed for generating files based on templating. It supports *YAML*, *JSON*, and *XML* as source data formats and provides flexibility in templating through both *Scriban*, *Liquid*, *Handlebars*, *StringTemplate* and *SmartFormat* templates languages. With Expressif.LanguageServer, you can easily automate file generation by combining structured data from YAML, JSON, or XML files with customizable templates using Scriban or Liquid.
-
-### Supported Data Formats:
-
-- **YAML**: Files with the `.yaml` or `.yml` extension are parsed using a YAML source parser.
-- **JSON**: Files with the `.json` extension are parsed using a JSON source parser.
-- **XML**: Files with the `.xml` extension are parsed using an XML source parser.
-- **CSV**: Files with the `.csv` extension are parsed using an CSV source parser. The CSV dialect can be described using the `-P` option (see below).
-- **FrontMatterMarkdown**: Files with the `.md` extension are parsed using an YAML parser for the FrontMatter and the Markdown content is added in the entry *content*.
-- **FrontMatter**: using an YAML parser for the FrontMatter, the Markdown content is not appended to the result.
-
-### Supported Templating Engines:
-
-Expressif.LanguageServer utilizes some templating engines, which allow for powerful and flexible templating.
-
-- **Scriban**: Templates with the `.scriban` extension are parsed using a Scriban template engine. Scriban is a lightweight and fast template engine with rich support for multiple output formats.
-  - Highly performant, designed to handle large-scale template processing.
-  - Supports customizable scripting with rich expressions and filters.
-  - Can work with JSON and YAML data sources.
-  - Typical Use Case: Config file generation, reports, email templates, or any templating scenario not tied to a specific web framework.
-- **Liquid**: Templates with the `.liquid` extension are parsed using a dotLiquid template engine. DotLiquid is a .NET port of the Liquid templating engine used by platforms like Shopify.
-  - Secure (no access to system objects), making it ideal for user-generated templates.
-  - Allows both dynamic and static templating.
-  - Supports filters, tags, and various control flow structures.
-  - Typical Use Case: SaaS applications, dynamic content rendering, email templates.
-- **Handlebars**: Templates with the `.hbs` extension are parsed using a Handlebars template engine. Handlebars C# port of the popular JavaScript Handlebars templating engine.
-  - Simple syntax for generating HTML or text files from templates.
-  - Support for helpers, partial templates, and block helpers.
-  - Good separation of logic from presentation.
-  - Typical Use Case: Email templates, reports, and content generation.
-- **SmartFormat**: Templates with the `.smart` extension are parsed using a SmartFormat template engine. SmartFormat.Net is a A lightweight templating engine primarily used for string formatting.
-  - Provides more advanced formatting capabilities than standard string formatting in C#.
-  - Supports nested templates, conditional formatting, and more.
-  - Typical Use Case: Log messages, report generation, and dynamic text formatting.
-- **StringTemplate**: Templates with the `.st` and `.stg` extension are parsed using the StringTemplate engine. StringTemplate is a powerful template engine specifically designed to enforce strict separation of logic from presentation.
-  - Focused on generating structured text, such as code, XML, and reports.
-  - Strong emphasis on enforcing Model-View separation.
-  - Supports conditionals, loops, and automatic escaping to prevent security issues.
-  - Typical Use Case: Code generation, configuration files, and situations where strict separation between logic and template is required.
-
-### Command Usage:
-
-The command to run Expressif.LanguageServer is simply `expressif.LanguageServer`. When executing it, you need to provide three required arguments:
-
-- `-t, --template` (required): Specifies the path to the Scriban, Liquid, Handlebars, StringTemplate or SmartFormat template file.
-- `-s, --source`: Specifies the path to the source data file, which can be in YAML, JSON, or XML format. If this argument is not provided, the data will be read from the console input. In such cases, the `-r, --parser` option becomes mandatory.
-- `-o, --output`: Specifies the path to the output file where the generated content will be saved. If not provided, the output will be displayed directly in the console.
-
-**Example:**
-
-```bash
-expressif.LanguageServer -t template.scriban -s data.yaml -o page.html
-```
-
-In this example:
-
-- `template.scriban` is the Scriban template file.
-- `data.yaml` is the source file containing the structured data in YAML format.
-- `page.html` is the output file that will contain the generated content.
-
-### List of options
-
-### Template option
-
-- Shortcut: `-t`
-- Long: `--template`
-- Description: Specifies the path to the template file.
-- Accept: single value.
-- Mandatory: yes.
-- Example: `-t path/to/template` or `--template=path/to/template`
-
-### Engine option
-
-- Shortcut: `-e`
-- Long: `--engine`
-- Description: Specifies the template engine to use (scriban, fluid, dotliquid, handlebars, smartformat, stringtemplate).
-- Accept: single value. When omitted Expressif.LanguageServer will select the engine based on the extension of the template file.
-- Example: `-e fluid` or `--engine=fluid`
-
-### Engine files' extension association option
-
-- Shortcut: `-x`
-- Long: `--engine-extension`
-- Description: Specifies additional or replacing association between a file extension and an engine for automatic detection
-- Accept: multiple key-value pairs.
-- Mandatory: no.
-- Example: `-x txt:handlebars;liquid:fluid` or `--engine-extension=.txt:handlebars;liquid:fluid`
-
-### Source option
-
-- Shortcut: `-s`
-- Long: `--source`
-- Accept: single value or multiple key-value pairs.
-- Description:
-  - if single value is provided, it specifies the path to the source file. If omitted, input can be taken from StdIn.
-  - if multiple key-value pairs are provided, each of them specifies a part of the model and the key representing the tag in the model.
-- Exclusive: can't be set with the parameter `--StdIn`
-- Example: `-s path/to/source` or `--source=path/to/source` or `--source=foo:path/to/source1;bar:path/to/source1`
-
-### Parser option
-
-- Shortcut: `-r`
-- Long: `--parser`
-- Description: Specifies the parser to use (YAML, JSON, XML).
-- Accept: single value.
-- Mandatory: no expect if `--stdin` is specified. When omitted Expressif.LanguageServer will select the parser based on the extension of the source file
-- Example: `-r YAML` or `--parser=YAML`
-
-### Parser files' extension association option
-
-- Shortcut: `-X`
-- Long: `--parser-extension`
-- Description: Specifies additional or replacing association between a file extension and a parser for automatic detection
-- Accept: multiple key-value pairs.
-- Mandatory: no.
-- Example: `-X txt:yaml;dat:json` or `--parser-extension=txt:yaml;dat:json`
-
-### Parser's parameter option
-
-- Shortcut: `-P`
-- Long: `--parser-parameter`
-- Description: Specifies parameters tuning the behavior of the parser
-- Accept: multiple key-value pairs, prefixed by the file's extension followed by an arobas (`@`).
-- Mandatory: no.
-- Example: `-P csv@delimiter=^;csv@commentChar=#`
-
-### StdIn option
-
-- Shortcut: `-i`
-- Long: `--stdin`
-- Description: Specifies the input to the source data as coming from the StdIn.
-- Accept: switch value.
-- Exclusive: can't be set to true with the parameter `--source` and must specified to false when `--source` is not provided.
-- Example: `-i` or `--stdin` or `--stdin false`
-
-### Output option
-
-- Shortcut: `-o`
-- Long: `--output`
-- Description: Specifies the path to the generated output file. If omitted, output is rendered to StdOut.
-- Accept: single value.
-- Mandatory: no.
-- Example: `-o path/to/output` or `--output=path/to/output`
-
-#### Example:
-
-##### With a source file:
-
-```bash
-expressif.LanguageServer -t template.scriban -s data.yaml -o page.html
-```
-
-In this example:
-
-- `template.scriban` is the Scriban template file.
-- `data.yaml` is the source file containing the structured data in YAML format.
-- `page.html` is the output file that will contain the generated content.
-
-##### With data from the console:
-
-<sub>CMD:</sub>
-```cmd
-type "data.json" | expressif.LanguageServer --stdin -t template.hbs -r json
-```
-
-<sub>PowerShell:</sub>
 ```powershell
-Get-Content data.json | expressif.LanguageServer --stdin -t template.hbs -r json
+code --install-extension .\Expressif-LanguageSupport-<version>-win-x64.vsix
 ```
 
-<sub>Bash:</sub>
-```bash
-cat data.json | expressif.LanguageServer --stdin -t template.hbs -r json
+The packaged extension contains a self-contained language server. A separate .NET installation or language-server installation is therefore not required.
+
+> GitHub releases currently provide Windows x64 packages.
+
+### Standalone language server
+
+A standalone self-contained server is also available from the [GitHub releases](https://github.com/Seddryck/Expressif.LanguageServer/releases).
+
+Download and extract:
+
+```text
+Expressif-LanguageServer-<version>-net10.0-win-x64.zip
 ```
 
-In this example:
+Then configure an LSP-compatible editor or client to launch:
 
-- The input data is coming from the console
-- `template.hbs` is the Handlebars template file.
-- `json` is the parser of input data.
-- the output is redirected to the console.
+```text
+Expressif-LanguageServer.exe
+```
 
-Make sure that the template file and source file are correctly formatted and aligned with your data model to produce the desired result.
+The process communicates using the Language Server Protocol over standard input and output; it is not an interactive command-line application.
+
+## Using Visual Studio Code
+
+Open a `.expressif` or `.expr` file after installing the extension. The language server starts automatically and provides diagnostics, completion, hover information, signature help, semantic highlighting, formatting and quick fixes.
+
+### Run an expression
+
+Press `Ctrl+Enter` (`Cmd+Enter` on macOS), select the play button in the editor title, or run **Expressif: Run Expression** from the Command Palette.
+
+If text is selected, only that selection is evaluated. Otherwise, the complete document is evaluated.
+
+The input picker supports no input, an Expressif literal, a JSON or CSV file, an open JSON/CSV editor, the current selection in such an editor, or the previously used input.
+
+After choosing the input, choose the result representation:
+
+```text
+.expressif
+.json
+```
+
+Evaluation results are currently displayed in the **Expressif Evaluation** output channel.
+
+Press `Ctrl+Shift+Enter` (`Cmd+Shift+Enter` on macOS), or run **Expressif: Run Expression with Last Input and Output**, to evaluate again using the most recently selected input and output format. If either choice is unavailable, only the missing choice is requested.
+
+### Configuration
+
+The VS Code extension exposes two settings:
+
+| Setting | Description |
+| --- | --- |
+| `expressif.languageServer.path` | Optional path to a separately installed language-server executable. When empty, the bundled server is used. |
+| `expressifLanguageServer.trace.server` | LSP tracing level: `off`, `messages` or `verbose`. |
+
+Language-server logs and protocol traces are available from **View → Output → Expressif Language Server**.
+
+## Current limitations
+
+Some pieces of the editor experience are deliberately still evolving.
+
+Evaluation results currently use the Output panel. [#115](https://github.com/Seddryck/Expressif.LanguageServer/issues/115) will move them to a regular read-only editor pane.
+
+The language-server extension currently owns the `expressif` language registration itself. [#117](https://github.com/Seddryck/Expressif.LanguageServer/issues/117) will make it depend on the dedicated Expressif syntax-highlighting extension instead.
+
+Completion is currently based on the function catalog rather than inferred input types. Type-aware ranking is tracked by [#58](https://github.com/Seddryck/Expressif.LanguageServer/issues/58).
+
+Whole-document formatting is available, while formatting as you type is tracked separately by [#67](https://github.com/Seddryck/Expressif.LanguageServer/issues/67).
+
+Additional semantic validation and editor assistance for tuple-binding shorthands is tracked by [#102](https://github.com/Seddryck/Expressif.LanguageServer/issues/102).
+
+## Development
+
+Development requires the .NET 10 SDK, Node.js with npm, and Visual Studio Code.
+
+Build and test the language server from the repository root:
+
+```powershell
+dotnet restore Expressif.LanguageServer.sln
+dotnet build Expressif.LanguageServer.sln -c Release -f net10.0
+dotnet test Expressif.LanguageServer.sln -c Release -f net10.0
+```
+
+Build the VS Code client with:
+
+```powershell
+cd vscode-extension
+npm ci
+npm run compile
+```
+
+For a local extension-development session, publish a self-contained server into the extension first:
+
+```powershell
+node ./scripts/publish-server.mjs
+```
+
+Then open the repository in VS Code and press **F5** to launch the Extension Development Host.
+
+The VS Code client is intentionally thin: parsing, diagnostics and language semantics remain in `Expressif.LanguageServer` and its Core project rather than being duplicated in TypeScript.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [SECURITY.md](SECURITY.md) for reporting security issues.
+
+Expressif.LanguageServer is licensed under the [Apache License 2.0](LICENSE).

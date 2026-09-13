@@ -7,7 +7,7 @@ namespace Expressif.LanguageServer.Handlers;
 public sealed class EvaluateExpressionHandler(
     IExpressionEvaluationService evaluation,
     ISerializer serializer)
-    : ExecuteTypedResponseCommandHandlerBase<string, string, EvaluationInputFormat, ExpressionEvaluationResult>(CommandName, serializer)
+    : ExecuteTypedResponseCommandHandlerBase<string, string, EvaluationInputFormat, EvaluationOutputFormat, ExpressionEvaluationResult>(CommandName, serializer)
 {
     public const string CommandName = "expressif.evaluateExpression";
 
@@ -15,9 +15,10 @@ public sealed class EvaluateExpressionHandler(
         string expression,
         string? input,
         EvaluationInputFormat inputFormat,
+        EvaluationOutputFormat outputFormat,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(evaluation.Evaluate(expression, input, inputFormat));
+        return Task.FromResult(evaluation.Evaluate(expression, input, inputFormat, outputFormat));
     }
 }

@@ -12,7 +12,7 @@
     "directory": "vscode-extension"
   },
   "engines": {
-    "vscode": "^1.96.0"
+    "vscode": "^1.137.0"
   },
   "categories": [
     "Programming Languages"
@@ -23,7 +23,8 @@
   ],
   "activationEvents": [
     "onLanguage:expressif",
-    "onCommand:expressif.runExpression"
+    "onCommand:expressif.runExpression",
+    "onCommand:expressif.runExpressionWithPreviousSelections"
   ],
   "main": "./dist/extension.js",
   "files": [
@@ -42,6 +43,11 @@
         "title": "Run Expression",
         "category": "Expressif",
         "icon": "$(play)"
+      },
+      {
+        "command": "expressif.runExpressionWithPreviousSelections",
+        "title": "Run Expression with Last Input and Output",
+        "category": "Expressif"
       }
     ],
     "menus": {
@@ -65,6 +71,12 @@
         "command": "expressif.runExpression",
         "key": "ctrl+enter",
         "mac": "cmd+enter",
+        "when": "editorTextFocus && editorLangId == expressif"
+      },
+      {
+        "command": "expressif.runExpressionWithPreviousSelections",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
         "when": "editorTextFocus && editorLangId == expressif"
       }
     ],
@@ -112,13 +124,13 @@
     "package": "npm run compile && node ./scripts/publish-server.mjs && vsce package --out ./artifacts/expressif-language-support.vsix"
   },
   "dependencies": {
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^10.1.1"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
-    "@types/vscode": "^1.96.0",
-    "@vscode/vsce": "^3.2.1",
+    "@types/node": "^26.5.1",
+    "@types/vscode": "^1.137.0",
+    "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.2",
-    "typescript": "^5.7.2"
+    "typescript": "^7.0.2"
   }
 }

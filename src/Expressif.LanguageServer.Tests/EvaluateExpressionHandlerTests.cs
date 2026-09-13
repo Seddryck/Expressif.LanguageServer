@@ -14,12 +14,25 @@ public sealed class EvaluateExpressionHandlerTests
     {
         var expected = ExpressionEvaluationResult.Success("42");
         var evaluation = new Mock<IExpressionEvaluationService>();
-        evaluation.Setup(service => service.Evaluate("add(2)", "40", EvaluationInputFormat.Json)).Returns(expected);
+        evaluation.Setup(service => service.Evaluate(
+            "add(2)",
+            "40",
+            EvaluationInputFormat.Json,
+            EvaluationOutputFormat.Json)).Returns(expected);
         var handler = new EvaluateExpressionHandler(evaluation.Object, Mock.Of<ISerializer>());
 
-        var result = await handler.Handle("add(2)", "40", EvaluationInputFormat.Json, CancellationToken.None);
+        var result = await handler.Handle(
+            "add(2)",
+            "40",
+            EvaluationInputFormat.Json,
+            EvaluationOutputFormat.Json,
+            CancellationToken.None);
 
         Assert.That(result, Is.SameAs(expected));
-        evaluation.Verify(service => service.Evaluate("add(2)", "40", EvaluationInputFormat.Json), Times.Once);
+        evaluation.Verify(service => service.Evaluate(
+            "add(2)",
+            "40",
+            EvaluationInputFormat.Json,
+            EvaluationOutputFormat.Json), Times.Once);
     }
 }

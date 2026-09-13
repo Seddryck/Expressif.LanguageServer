@@ -11,6 +11,8 @@ import {
 
 let client: LanguageClient | undefined;
 let previousInput: EvaluationInput | undefined;
+let lastSelectedInput: EvaluationInput | undefined;
+let lastSelectedOutputFormat: EvaluationOutputFormat | undefined;
 let lastDataEditor: vscode.TextEditor | undefined;
 let lastExpressionEditor: vscode.TextEditor | undefined;
 
@@ -31,8 +33,10 @@ interface EvaluationResult {
   error?: string;
 }
 
+type EvaluationOutputFormat = 'Expressif' | 'Json';
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const outputChannel = vscode.window.createOutputChannel('Expressif Language Server');
+  const outputChannel = vscode.window.createOutputChannel('Expressif Language Server', { log: true });
   const evaluationChannel = vscode.window.createOutputChannel('Expressif Evaluation');
   context.subscriptions.push(outputChannel, evaluationChannel);
   rememberActiveEditor(vscode.window.activeTextEditor);
@@ -59,7 +63,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(client);
   context.subscriptions.push(vscode.commands.registerCommand(
     'expressif.runExpression',
-    () => runExpression(evaluationChannel)
+    () => runExpression(evaluationChannel, false)
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand(
+    'expressif.runExpressionWithPreviousSelections',
+    () => runExpression(evaluationChannel, true)
   ));
   outputChannel.appendLine(`Starting ${executable.command}`);
 
@@ -71,7 +79,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 }
 
-async function runExpression(outputChannel: vscode.OutputChannel): Promise<void> {
+async function runExpression(
+  outputChannel: vscode.OutputChannel,
+  reuseSelections: boolean
+): Promise<void> {
   const activeEditor = vscode.window.activeTextEditor;
   const expressionEditor = activeEditor?.document.languageId === 'expressif'
     ? activeEditor
@@ -95,14 +106,25 @@ async function runExpression(outputChannel: vscode.OutputChannel): Promise<void>
   }
 
   try {
-    const selectedInput = await selectEvaluationInput(expressionEditor);
+    const selectedInput = reuseSelections && lastSelectedInput
+      ? lastSelectedInput
+      : await selectEvaluationInput(expressionEditor);
     if (!selectedInput) {
       return;
     }
+    lastSelectedInput = selectedInput;
+
+    const outputFormat = reuseSelections && lastSelectedOutputFormat
+      ? lastSelectedOutputFormat
+      : await selectEvaluationOutputFormat();
+    if (!outputFormat) {
+      return;
+    }
+    lastSelectedOutputFormat = outputFormat;
 
     const result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
       command: 'expressif.evaluateExpression',
-      arguments: [expression, selectedInput.value, selectedInput.format]
+      arguments: [expression, selectedInput.value, selectedInput.format, outputFormat]
     });
     if (result.requiresInput) {
       await vscode.window.showErrorMessage(
@@ -123,13 +145,25 @@ async function runExpression(outputChannel: vscode.OutputChannel): Promise<void>
     if (selectedInput.value !== undefined) {
       outputChannel.appendLine(`Input (${selectedInput.description}): ${selectedInput.value}`);
     }
-    outputChannel.appendLine(`Result: ${result.value ?? ''}`);
+    outputChannel.appendLine(`Result (.${outputFormat === 'Json' ? 'json' : 'expressif'}): ${result.value ?? ''}`);
     outputChannel.appendLine('');
     outputChannel.show(true);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await vscode.window.showErrorMessage(`Expressif evaluation failed: ${message}`);
   }
+}
+
+async function selectEvaluationOutputFormat(): Promise<EvaluationOutputFormat | undefined> {
+  const choice = await vscode.window.showQuickPick([
+    { label: '.expressif', description: 'Expressif textual representation', format: 'Expressif' as const },
+    { label: '.json', description: 'JSON serialization', format: 'Json' as const }
+  ], {
+    title: 'Run Expressif Expression',
+    placeHolder: 'Choose the output format for this evaluation',
+    ignoreFocusOut: true
+  });
+  return choice?.format;
 }
 
 async function selectEvaluationInput(

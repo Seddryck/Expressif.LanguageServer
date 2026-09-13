@@ -17,7 +17,7 @@ The repository also contains **Expressif Language Support**, a thin Visual Studi
 [![GitHub Release Date](https://img.shields.io/github/release-date/seddryck/Expressif.LanguageServer.svg)](https://github.com/Seddryck/Expressif.LanguageServer/releases/latest) [![licence badge](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://github.com/Seddryck/Expressif.LanguageServer/blob/master/LICENSE)
 
 **Dev. activity:** [![GitHub last commit](https://img.shields.io/github/last-commit/Seddryck/Expressif.LanguageServer.svg)](https://github.com/Seddryck/Expressif.LanguageServer/commits)
-![Still maintained](https://img.shields.io/maintenance/yes/2025.svg)
+![Still maintained](https://img.shields.io/maintenance/yes/2026.svg)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/y/Seddryck/Expressif.LanguageServer)
 
 **Continuous integration builds:** [![Build](https://github.com/Seddryck/Expressif.LanguageServer/actions/workflows/build.yml/badge.svg)](https://github.com/Seddryck/Expressif.LanguageServer/actions/workflows/build.yml)

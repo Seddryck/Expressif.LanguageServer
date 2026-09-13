@@ -68,13 +68,13 @@
     },
     "keybindings": [
       {
-        "command": "expressif.runExpression",
+        "command": "expressif.runExpressionWithPreviousSelections",
         "key": "ctrl+enter",
         "mac": "cmd+enter",
         "when": "editorTextFocus && editorLangId == expressif"
       },
       {
-        "command": "expressif.runExpressionWithPreviousSelections",
+        "command": "expressif.runExpression",
         "key": "ctrl+shift+enter",
         "mac": "cmd+shift+enter",
         "when": "editorTextFocus && editorLangId == expressif"

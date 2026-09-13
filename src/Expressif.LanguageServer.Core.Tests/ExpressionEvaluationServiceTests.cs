@@ -48,8 +48,8 @@ public sealed class ExpressionEvaluationServiceTests
         });
     }
 
-    [TestCase(EvaluationOutputFormat.Expressif, "\n{\n  name := \"Ada\",\n  scores := {\n    1,\n    2\n  }\n}")]
-    [TestCase(EvaluationOutputFormat.Json, "\n{\n  \"name\": \"Ada\",\n  \"scores\": [\n    1,\n    2\n  ]\n}")]
+    [TestCase(EvaluationOutputFormat.Expressif, "{\n  name := \"Ada\",\n  scores := {\n    1,\n    2\n  }\n}")]
+    [TestCase(EvaluationOutputFormat.Json, "{\n  \"name\": \"Ada\",\n  \"scores\": [\n    1,\n    2\n  ]\n}")]
     public void Evaluate_PrettyOutput_UsesConfiguredIndentation(
         EvaluationOutputFormat outputFormat,
         string expected)

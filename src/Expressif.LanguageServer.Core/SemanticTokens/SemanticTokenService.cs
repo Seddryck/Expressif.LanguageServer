@@ -18,6 +18,7 @@ public sealed class SemanticTokenService : ISemanticTokenService
                 case ConstantReferenceSyntax:
                 case IncomingValueSyntax:
                 case TupleProjectionSyntax:
+                case BindingNameSyntax:
                     Add(tokens, node.Span.Start, node.Span.Length, SemanticTokenKind.Variable, text.Length);
                     break;
                 case FunctionCallSyntax function:
@@ -57,6 +58,9 @@ public sealed class SemanticTokenService : ISemanticTokenService
                 case MapShorthandSyntax shorthand when shorthand.Text.StartsWith("|>", StringComparison.Ordinal):
                     Add(tokens, shorthand.Span.Start, 2, SemanticTokenKind.Operator, text.Length);
                     break;
+                case InputBindingExpressionSyntax binding:
+                    AddInputBindingOperator(tokens, binding, text);
+                    break;
             }
         }
 
@@ -70,6 +74,21 @@ public sealed class SemanticTokenService : ISemanticTokenService
                     result.Add(token);
                 return result;
             });
+    }
+
+    private static void AddInputBindingOperator(ICollection<SemanticTokenSpan> tokens,
+        InputBindingExpressionSyntax binding, string text)
+    {
+        var searchStart = binding.Binding?.Span.End ?? binding.Span.Start;
+        var searchEnd = Math.Min(binding.Body.Span.Start, text.Length);
+        for (var position = searchStart; position + 1 < searchEnd; position++)
+        {
+            if (text[position] != ':' || text[position + 1] != '>')
+                continue;
+
+            Add(tokens, position, 2, SemanticTokenKind.Operator, text.Length);
+            return;
+        }
     }
 
     private static void AddRecordFields(ICollection<SemanticTokenSpan> tokens, RecordAccessSyntax access,

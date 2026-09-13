@@ -144,6 +144,18 @@ public sealed class FunctionCallDiagnosticServiceTests
         });
     }
 
+    [Test]
+    public void GetDiagnostics_FunctionInsideInputBoundBody_ReportsCallDiagnostic()
+    {
+        var service = CreateService(new FunctionMetadata("add", [],
+            [new("value", false, "Value.")], "Adds.", "Numeric"));
+        const string source = "10 | input :> @input | add()";
+
+        var diagnostic = service.GetDiagnostics(Parse(source)).Single();
+
+        Assert.That(diagnostic.Start, Is.EqualTo(source.IndexOf("add", StringComparison.Ordinal)));
+    }
+
     [TestCase("add(1, 2, 3)", 1)]
     [TestCase("add(1, 2)", 0)]
     [TestCase("add(1)", 0)]

@@ -62,6 +62,21 @@ public sealed class FieldScopeHandlerTests
         Assert.That(hover?.Contents.MarkupContent?.Value, Does.Contain("external input"));
     }
 
+    [Test]
+    public async Task InputBindingReference_HighlightsSupplyingExpressionAsync()
+    {
+        const string text = "{name := 1} | input :> @input";
+        documents.Open(Uri.ToUri(), text, 1);
+        var referenceColumn = text.IndexOf("@input", StringComparison.Ordinal) + 1;
+
+        var result = await HighlightAsync(0, referenceColumn);
+        var hover = await HoverAsync(0, referenceColumn);
+
+        Assert.That(result!.Single().Range,
+            Is.EqualTo(new Range(0, 0, 0, "{name := 1}".Length)));
+        Assert.That(hover?.Contents.MarkupContent?.Value, Does.Contain("input bound as '@input'"));
+    }
+
     [TestCase(0, -1)]
     [TestCase(-1, 0)]
     [TestCase(1, 0)]

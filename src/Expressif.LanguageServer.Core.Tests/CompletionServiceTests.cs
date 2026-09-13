@@ -16,6 +16,16 @@ public sealed class CompletionServiceTests
 
     private readonly CompletionService service = new(Catalog);
 
+    [Test]
+    public void GetCompletions_InsideInputBoundBody_ReturnsFunctions()
+    {
+        const string text = "10 | input :> @input | upp";
+
+        var result = service.GetCompletions(text, text.Length);
+
+        Assert.That(result.Select(suggestion => suggestion.Label), Does.Contain("upper"));
+    }
+
     [TestCase("@foo | text-to-", "text-to-", 3)]
     [TestCase("text-to-", "text-to-", 3)]
     public void GetCompletions_FunctionPrefix_ReturnsMatchingNames(

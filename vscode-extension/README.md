@@ -4,7 +4,7 @@ This extension is a thin client for `Expressif.LanguageServer`. It registers `.e
 
 ## Run an expression
 
-Press `Ctrl+Enter` (`Cmd+Enter` on macOS), use the play button in the editor title, or run **Expressif: Run Expression** from the Command Palette. The command evaluates the current selection, or the whole document when nothing is selected. Before evaluation, choose whether to use no input, enter a literal, select a JSON or CSV file, use an open JSON/CSV editor or its current selection, or reuse the previous input. Then choose `.expressif` or `.json` for the result representation. To use the active JSON/CSV editor, select the expression once, focus the JSON/CSV editor, and invoke the command from the Command Palette; the extension remembers the most recently active Expressif editor. Results open in a read-only editor beside the Expressif script. Re-running the same script with the same output format refreshes that result editor.
+Press `Ctrl+Shift+Enter` (`Cmd+Shift+Enter` on macOS), use the play button in the editor title, or run **Expressif: Run Expression** from the Command Palette. The command evaluates the current selection, or the whole document when nothing is selected. Before evaluation, choose whether to use no input, enter a literal, select a JSON or CSV file, use an open JSON/CSV editor or its current selection, or reuse the previous input. Then choose `.expressif` or `.json` for the result representation. To use the active JSON/CSV editor, select the expression once, focus the JSON/CSV editor, and invoke the command from the Command Palette; the extension remembers the most recently active Expressif editor. Results open in a read-only editor beside the Expressif script. Re-running the same script with the same output format refreshes that result editor.
 
 ## Tuple binding migrations
 
@@ -13,7 +13,7 @@ The language server highlights deprecated implicit callable binding in `adjacent
 editor's Quick Fix action to convert the callable to explicit `~function` or `function~` syntax.
 The diagnostic targets only the affected callable; the operator and callable themselves remain supported.
 
-Press `Ctrl+Shift+Enter` (`Cmd+Shift+Enter` on macOS), or run **Expressif: Run Expression with Last Input and Output**, to repeat an evaluation with the most recently selected input and output format. If either selection has not yet been made in the current VS Code session, the extension prompts only for the missing choice.
+Press `Ctrl+Enter` (`Cmd+Enter` on macOS), or run **Expressif: Run Expression with Last Input and Output**, to evaluate with the most recently selected input and output format. If either selection has not yet been made in the current VS Code session, the extension prompts only for the missing choice.
 
 Evaluation results use compact rendering by default. Open VS Code Settings (`Ctrl+,` or `Cmd+,`), search for `Expressif Output`, and choose **compact** or **pretty**. In pretty mode, set **Expressif › Output: Indent** to the number of spaces per indentation level. You can make the same change in `settings.json`:
 
@@ -24,7 +24,7 @@ Evaluation results use compact rendering by default. Open VS Code Settings (`Ctr
 }
 ```
 
-Change `pretty` to `compact` for single-line results; `expressif.output.indent` is ignored in compact mode. Changes apply to the next evaluation without reloading VS Code. Pretty results start on a new line after the result label.
+Change `pretty` to `compact` for single-line results; `expressif.output.indent` is ignored in compact mode. Changes apply to the next evaluation without reloading VS Code.
 
 ## Development
 

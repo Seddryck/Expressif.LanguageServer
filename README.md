@@ -92,7 +92,8 @@ Open a `.expressif` or `.expr` file after installing the extension. The language
 
 ### Run an expression
 
-Press `Ctrl+Enter` (`Cmd+Enter` on macOS), select the play button in the editor title, or run **Expressif: Run Expression** from the Command Palette.
+Press `Ctrl+Shift+Enter` (`Cmd+Shift+Enter` on macOS), select the play button in the editor title,
+or run **Expressif: Run Expression** from the Command Palette to choose the input and output format.
 
 If text is selected, only that selection is evaluated. Otherwise, the complete document is evaluated.
 
@@ -109,7 +110,7 @@ Evaluation results open as read-only virtual documents beside the Expressif scri
 results use Expressif language mode and `.json` results use JSON language mode. Re-running the
 same script with the same output format refreshes the existing result editor.
 
-Press `Ctrl+Shift+Enter` (`Cmd+Shift+Enter` on macOS), or run **Expressif: Run Expression with Last Input and Output**, to evaluate again using the most recently selected input and output format. If either choice is unavailable, only the missing choice is requested.
+Press `Ctrl+Enter` (`Cmd+Enter` on macOS), or run **Expressif: Run Expression with Last Input and Output**, to evaluate using the most recently selected input and output format. If either choice is unavailable, only the missing choice is requested.
 
 ### Configuration
 
@@ -135,8 +136,7 @@ To change evaluation rendering, open VS Code Settings (`Ctrl+,` or `Cmd+,`), sea
 ```
 
 Change `pretty` to `compact` for single-line results. The indent setting is ignored in compact
-mode. Changes apply to the next evaluation without reloading VS Code; pretty results start on a
-new line after the result label.
+mode. Changes apply to the next evaluation without reloading VS Code.
 
 Language-server logs and protocol traces are available from **View → Output → Expressif Language Server**.
 

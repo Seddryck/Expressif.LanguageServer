@@ -52,17 +52,7 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
         var aggregations = new AccumulatorIntrospector()
             .Describe()
             .Where(aggregation => aggregation.IsPublic)
-            .Select(aggregation => new FunctionMetadata(
-                aggregation.Name,
-                aggregation.Aliases.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
-                aggregation.Parameters.Select(parameter => new FunctionParameterMetadata(
-                    parameter.Name,
-                    parameter.Optional,
-                    parameter.Summary,
-                    parameter.Variadic,
-                    parameter.MinimumCardinality)).ToArray(),
-                aggregation.Summary,
-                aggregation.Scope))
+            .SelectMany(CreateAggregationMetadata)
             .ToArray();
 
         return functions
@@ -80,6 +70,40 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
                 candidate.Name.Equals(function.Replacement, StringComparison.OrdinalIgnoreCase) ||
                 candidate.Aliases.Contains(function.Replacement, StringComparer.OrdinalIgnoreCase));
             return replacement?.ImplementationType == function.ImplementationType;
+        }
+
+        static IEnumerable<FunctionMetadata> CreateAggregationMetadata(AccumulatorInfo aggregation)
+        {
+            var parameters = aggregation.Parameters.Select(parameter => new FunctionParameterMetadata(
+                parameter.Name,
+                parameter.Optional,
+                parameter.Summary,
+                parameter.Variadic,
+                parameter.MinimumCardinality)).ToArray();
+            var deprecatedAliases = aggregation.DeprecatedAliases
+                .Select(alias => alias.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            yield return new FunctionMetadata(
+                aggregation.Name,
+                aggregation.Aliases
+                    .Where(alias => !deprecatedAliases.Contains(alias))
+                    .Order(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                parameters,
+                aggregation.Summary,
+                aggregation.Scope);
+
+            foreach (var alias in aggregation.DeprecatedAliases)
+                yield return new FunctionMetadata(
+                    alias.Name,
+                    [],
+                    parameters,
+                    aggregation.Summary,
+                    aggregation.Scope,
+                    Deprecated: true,
+                    Replacement: alias.Replacement,
+                    SafeDirectReplacement: true);
         }
     }
 }

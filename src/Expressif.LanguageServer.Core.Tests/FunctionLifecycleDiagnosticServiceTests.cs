@@ -41,6 +41,23 @@ public sealed class FunctionLifecycleDiagnosticServiceTests
     }
 
     [Test]
+    public void GetDiagnostics_DeprecatedImplode_ReportsConcatReplacement()
+    {
+        var service = new FunctionLifecycleDiagnosticService(new ExpressifFunctionCatalog());
+
+        var diagnostic = service.GetDiagnostics(Parse("implode(\"-\")")).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.FunctionName, Is.EqualTo("implode"));
+            Assert.That(diagnostic.Message, Is.EqualTo(
+                "Function 'implode' is deprecated. Use 'concat' instead."));
+            Assert.That(diagnostic.IdentifierStart, Is.Zero);
+            Assert.That(diagnostic.IdentifierLength, Is.EqualTo("implode".Length));
+        });
+    }
+
+    [Test]
     public void GetDiagnostics_MissingReplacementAndSunset_FallsBackCleanly()
     {
         var service = new FunctionLifecycleDiagnosticService(new TestFunctionCatalog(
@@ -48,7 +65,7 @@ public sealed class FunctionLifecycleDiagnosticServiceTests
             new("legacy", [], [], "Legacy.", "Text", true)
         ]));
 
-        Assert.That(service.GetDiagnostics(Parse("legacy()" )).Single().Message,
+        Assert.That(service.GetDiagnostics(Parse("legacy()")).Single().Message,
             Is.EqualTo("Function 'legacy' is deprecated."));
     }
 

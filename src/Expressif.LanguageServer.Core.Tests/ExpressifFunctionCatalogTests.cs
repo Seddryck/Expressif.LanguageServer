@@ -62,6 +62,19 @@ public sealed class ExpressifFunctionCatalogTests
     }
 
     [Test]
+    public void Functions_DeprecatedImplode_ExposesSafeConcatReplacement()
+    {
+        var function = new ExpressifFunctionCatalog().Functions.Single(item => item.Name == "implode");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(function.Deprecated, Is.True);
+            Assert.That(function.Replacement, Is.EqualTo("concat"));
+            Assert.That(function.SafeDirectReplacement, Is.True);
+        });
+    }
+
+    [Test]
     public void Functions_IncludeSignatureMetadataFromExpressifIntrospection()
     {
         var functions = new ExpressifFunctionCatalog().Functions;

@@ -33,6 +33,22 @@ public sealed class FunctionCodeActionServiceTests
     }
 
     [Test]
+    public void GetReplacements_DeprecatedImplode_ReturnsConcatRename()
+    {
+        var replacement = new FunctionCodeActionService(new ExpressifFunctionCatalog())
+            .GetReplacements(Parse("implode(\"-\")"), 2, 0)
+            .Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(replacement.OldName, Is.EqualTo("implode"));
+            Assert.That(replacement.NewName, Is.EqualTo("concat"));
+            Assert.That(replacement.IdentifierStart, Is.Zero);
+            Assert.That(replacement.IdentifierLength, Is.EqualTo("implode".Length));
+        });
+    }
+
+    [Test]
     public void GetReplacements_SelectionExtendsPastSyntaxText_ReturnsRename()
     {
         var service = CreateService(safe: true);

@@ -132,6 +132,18 @@ public sealed class FunctionHoverServiceTests
         Assert.That(result?.Signature, Is.EqualTo("upper()"));
     }
 
+    [TestCase(7)]
+    [TestCase(8)]
+    [TestCase(10)]
+    [TestCase(11)]
+    [TestCase(17)]
+    public void GetHover_TypeAndMappingOperator_ReturnNoHover(int cursor)
+    {
+        var result = service.GetHover(Parse(".price -> :numeric"), cursor);
+
+        Assert.That(result, Is.Null);
+    }
+
     [TestCase("~lower", 2, 1)]
     [TestCase("lower~", 2, 0)]
     [TestCase("~text-to-lower", 5, 1)]

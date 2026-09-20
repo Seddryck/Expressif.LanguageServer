@@ -77,6 +77,16 @@ public sealed class FunctionCallDiagnosticServiceTests
         Assert.That(service.GetDiagnostics(Parse("add()")), Has.Count.EqualTo(1));
     }
 
+    [Test]
+    public void GetDiagnostics_RealCatalogOptionalSubtractArgument_ReturnsNoDiagnostic()
+    {
+        var service = new FunctionCallDiagnosticService(new ExpressifFunctionCatalog());
+
+        Assert.That(
+            service.GetDiagnostics(Parse("subtract($1 | .score | coerce(:numeric))")),
+            Is.Empty);
+    }
+
     [TestCase("upper(1)", "upper", 0, 1)]
     [TestCase("add(1, 2)", "add", 1, 2)]
     [TestCase("ADD(1, 2)", "ADD", 1, 2)]

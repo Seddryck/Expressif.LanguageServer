@@ -108,6 +108,28 @@ public sealed class FunctionHoverServiceTests
         Assert.That(result?.IdentifierStart, Is.EqualTo(cursor));
     }
 
+    [TestCase("upper() // trailing comment")]
+    [TestCase("upper() /* trailing comment */")]
+    public void GetHover_CommentOutsideExpression_ReturnsNoHover(string text)
+    {
+        var cursor = text.IndexOf("comment", StringComparison.Ordinal);
+
+        var result = service.GetHover(Parse(text), cursor);
+
+        Assert.That(result, Is.Null);
+    }
+
+    [Test]
+    public void GetHover_FunctionAfterLeadingComment_ReturnsDocumentation()
+    {
+        const string text = "// leading comment\nupper()";
+        var cursor = text.IndexOf("upper", StringComparison.Ordinal);
+
+        var result = service.GetHover(Parse(text), cursor);
+
+        Assert.That(result?.Signature, Is.EqualTo("upper()"));
+    }
+
     [TestCase("~lower", 2, 1)]
     [TestCase("lower~", 2, 0)]
     [TestCase("~text-to-lower", 5, 1)]

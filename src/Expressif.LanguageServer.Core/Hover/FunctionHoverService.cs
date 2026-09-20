@@ -15,8 +15,11 @@ public sealed class FunctionHoverService(
     public FunctionHover? GetHover(RootExpressionSyntax syntaxTree, int cursorOffset)
     {
         ArgumentNullException.ThrowIfNull(syntaxTree);
-        if (cursorOffset < 0 || cursorOffset > syntaxTree.Text.Length)
+        if (cursorOffset < 0)
             throw new ArgumentOutOfRangeException(nameof(cursorOffset));
+
+        if (cursorOffset < syntaxTree.Span.Start || cursorOffset >= syntaxTree.Span.End)
+            return null;
 
         var call = CallableSyntaxReference.DescendantsOf(syntaxTree)
             .Where(function => cursorOffset >= function.NameSpan.Start &&

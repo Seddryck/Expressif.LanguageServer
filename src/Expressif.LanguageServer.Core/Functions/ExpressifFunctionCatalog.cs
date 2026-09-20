@@ -19,12 +19,9 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
             .Select(function => new FunctionMetadata(
                 function.Name,
                 function.Aliases.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
-                function.Parameters.Select(parameter => new FunctionParameterMetadata(
-                    parameter.Name,
-                    parameter.Optional,
-                    parameter.Summary,
-                    parameter.Variadic,
-                    parameter.MinimumCardinality)).ToArray(),
+                function.Parameters.Select(parameter => CreateParameterMetadata(
+                    function.ImplementationType,
+                    parameter)).ToArray(),
                 function.Summary,
                 function.Scope,
                 function.Deprecated,
@@ -39,12 +36,9 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
             .Select(predicate => new FunctionMetadata(
                 predicate.Name,
                 predicate.Aliases.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
-                predicate.Parameters.Select(parameter => new FunctionParameterMetadata(
-                    parameter.Name,
-                    parameter.Optional,
-                    parameter.Summary,
-                    parameter.Variadic,
-                    parameter.MinimumCardinality)).ToArray(),
+                predicate.Parameters.Select(parameter => CreateParameterMetadata(
+                    predicate.ImplementationType,
+                    parameter)).ToArray(),
                 predicate.Summary,
                 predicate.Scope))
             .ToArray();
@@ -74,12 +68,9 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
 
         static IEnumerable<FunctionMetadata> CreateAggregationMetadata(AccumulatorInfo aggregation)
         {
-            var parameters = aggregation.Parameters.Select(parameter => new FunctionParameterMetadata(
-                parameter.Name,
-                parameter.Optional,
-                parameter.Summary,
-                parameter.Variadic,
-                parameter.MinimumCardinality)).ToArray();
+            var parameters = aggregation.Parameters.Select(parameter => CreateParameterMetadata(
+                aggregation.ImplementationType,
+                parameter)).ToArray();
             var deprecatedAliases = aggregation.DeprecatedAliases
                 .Select(alias => alias.Name)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -105,5 +96,31 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
                     Replacement: alias.Replacement,
                     SafeDirectReplacement: true);
         }
+    }
+
+    private static FunctionParameterMetadata CreateParameterMetadata(
+        Type implementationType,
+        ParameterInfo parameter)
+    {
+        var optional = parameter.Optional || IsOmittedFromConstructorOverload(implementationType, parameter.Name);
+        return new FunctionParameterMetadata(
+            parameter.Name,
+            optional,
+            parameter.Summary,
+            parameter.Variadic,
+            optional ? 0 : parameter.MinimumCardinality);
+    }
+
+    private static bool IsOmittedFromConstructorOverload(Type implementationType, string parameterName)
+    {
+        var constructorParameterNames = implementationType
+            .GetConstructors()
+            .Select(constructor => constructor.GetParameters()
+                .Select(parameter => parameter.Name)
+                .ToHashSet(StringComparer.Ordinal))
+            .ToArray();
+
+        return constructorParameterNames.Any(names => names.Contains(parameterName)) &&
+               constructorParameterNames.Any(names => !names.Contains(parameterName));
     }
 }

@@ -28,7 +28,9 @@ public sealed class FunctionCallDiagnosticService(IFunctionCatalog functions)
             yield break;
         }
 
-        var minimumArgumentCount = function.Parameters.Sum(parameter => parameter.MinimumCardinality);
+        var minimumArgumentCount = function.Parameters
+            .Where(parameter => !parameter.Optional)
+            .Sum(parameter => parameter.MinimumCardinality);
         if (call.Arguments.Count < minimumArgumentCount)
         {
             yield return new(

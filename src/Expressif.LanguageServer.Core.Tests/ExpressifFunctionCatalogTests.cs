@@ -102,4 +102,17 @@ public sealed class ExpressifFunctionCatalogTests
             Assert.That(expressions.Description, Does.Contain("Two or more"));
         });
     }
+
+    [Test]
+    public void Functions_ConstructorOverloadOmission_MarksParameterAsOptional()
+    {
+        var function = new ExpressifFunctionCatalog().Functions.Single(item => item.Name == "subtract");
+        var times = function.Parameters.Single(parameter => parameter.Name == "times");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(times.Optional, Is.True);
+            Assert.That(times.MinimumCardinality, Is.Zero);
+        });
+    }
 }

@@ -110,7 +110,9 @@ public sealed class FunctionHoverServiceTests
 
     [TestCase("upper() // trailing comment")]
     [TestCase("upper() /* trailing comment */")]
-    public void GetHover_CommentOutsideExpression_ReturnsNoHover(string text)
+    [TestCase("upper() // middle comment\n| lower()")]
+    [TestCase("upper() /* middle comment */ | lower()")]
+    public void GetHover_Comment_ReturnsNoHover(string text)
     {
         var cursor = text.IndexOf("comment", StringComparison.Ordinal);
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add **Format Document** to the Explorer context menu for `.expressif` and `.expr` files.
 - Add **Expressif File** to VS Code's **New File...** picker.
 - Open evaluation results as reusable read-only editor documents beside the Expressif script.
 - Include public aggregations in function completion, hover, signature help, and diagnostics.

@@ -81,6 +81,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     createExpressifFile
   ));
   context.subscriptions.push(vscode.commands.registerCommand(
+    'expressif.formatDocument',
+    formatExpressifDocument
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand(
     'expressif.runExpression',
     () => runExpression(evaluationResults, false)
   ));
@@ -101,6 +105,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 async function createExpressifFile(): Promise<void> {
   const document = await vscode.workspace.openTextDocument({ language: 'expressif' });
   await vscode.window.showTextDocument(document);
+}
+
+async function formatExpressifDocument(resource?: vscode.Uri): Promise<void> {
+  const uri = resource ?? vscode.window.activeTextEditor?.document.uri;
+  if (!uri) {
+    await vscode.window.showErrorMessage('Select an Expressif document to format.');
+    return;
+  }
+
+  const document = await vscode.workspace.openTextDocument(uri);
+  if (document.languageId !== 'expressif') {
+    await vscode.window.showErrorMessage('The selected file is not an Expressif document.');
+    return;
+  }
+
+  await vscode.window.showTextDocument(document, { preview: false });
+  await vscode.commands.executeCommand('editor.action.formatDocument');
 }
 
 async function runExpression(

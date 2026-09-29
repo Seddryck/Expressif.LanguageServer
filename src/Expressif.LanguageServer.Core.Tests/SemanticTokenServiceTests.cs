@@ -193,6 +193,17 @@ public sealed class SemanticTokenServiceTests
         }));
     }
 
+    [Test]
+    public void GetTokens_TypeLiteral_ClassifiesEntireLiteralAsType()
+    {
+        const string text = "array() | sort-by(.progression -> :numeric)";
+
+        var type = GetTokens(text).Single(token => token.Kind == SemanticTokenKind.Type);
+
+        Assert.That((text.Substring(type.Start, type.Length), type.Kind),
+            Is.EqualTo((":numeric", SemanticTokenKind.Type)));
+    }
+
     private IReadOnlyList<SemanticTokenSpan> GetTokens(string text)
     {
         var parsed = syntax.Parse(text);

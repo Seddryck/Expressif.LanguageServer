@@ -1,5 +1,6 @@
 using Expressif.LanguageServer.Core.Functions;
 using Expressif.Syntax;
+using Expressif.Types;
 
 namespace Expressif.LanguageServer.Core.Completion;
 
@@ -12,6 +13,9 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
         ArgumentNullException.ThrowIfNull(text);
         if (cursorOffset < 0 || cursorOffset > text.Length)
             throw new ArgumentOutOfRangeException(nameof(cursorOffset));
+
+        if (TryGetTypeLiteralCompletion(text, cursorOffset, out var typeCompletions))
+            return typeCompletions;
 
         var prefixStart = cursorOffset;
         while (prefixStart > 0 && IsFunctionNameCharacter(text[prefixStart - 1]))
@@ -71,6 +75,50 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
                         .ToArray());
     }
 
+    private static bool TryGetTypeLiteralCompletion(
+        string text, int cursorOffset, out IReadOnlyList<CompletionSuggestion> completions)
+    {
+        var prefixStart = cursorOffset;
+        while (prefixStart > 0 && IsTypeNameCharacter(text[prefixStart - 1]))
+            prefixStart--;
+
+        if (prefixStart == 0 || text[prefixStart - 1] != ':')
+        {
+            completions = [];
+            return false;
+        }
+
+        var tokenEnd = cursorOffset;
+        while (tokenEnd < text.Length && IsTypeNameCharacter(text[tokenEnd]))
+            tokenEnd++;
+
+        const string probeType = "numeric";
+        var probeText = string.Concat(
+            text.AsSpan(0, prefixStart),
+            probeType,
+            text.AsSpan(tokenEnd));
+        if (!ProbeIsTypeLiteral(probeText, prefixStart - 1, probeType.Length + 1))
+        {
+            completions = [];
+            return false;
+        }
+
+        var prefix = text[prefixStart..cursorOffset];
+        completions = TypeRegistry.All
+            .Where(type => type.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(type => type.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(type => new CompletionSuggestion(
+                type.Name,
+                type.Name,
+                true,
+                prefixStart,
+                tokenEnd - prefixStart,
+                type.Summary,
+                Kind: CompletionSuggestionKind.Type))
+            .ToArray();
+        return true;
+    }
+
     private static bool ProbeIsFunction(string probeText)
     {
         try
@@ -89,16 +137,34 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
         }
     }
 
+    private static bool ProbeIsTypeLiteral(string probeText, int expectedStart, int expectedLength)
+    {
+        try
+        {
+            var syntax = ExpressifSyntax.Parse(probeText);
+            return DescendantsAndSelf(syntax).Any(node => node is TypeLiteralSyntax type
+                && type.Span.Start == expectedStart
+                && type.Span.Length == expectedLength);
+        }
+        catch (ExpressifSyntaxException)
+        {
+            return false;
+        }
+    }
+
     private static IEnumerable<SyntaxNode> DescendantsAndSelf(SyntaxNode node)
     {
         yield return node;
         foreach (var child in node.Children)
-        foreach (var descendant in DescendantsAndSelf(child))
-            yield return descendant;
+            foreach (var descendant in DescendantsAndSelf(child))
+                yield return descendant;
     }
 
     private static bool IsFunctionNameCharacter(char character)
         => char.IsAsciiLetterOrDigit(character) || character is '-' or '_';
+
+    private static bool IsTypeNameCharacter(char character)
+        => char.IsAsciiLetterOrDigit(character) || character == '-';
 
     private static bool HasOpeningParenthesis(string text, int position)
     {

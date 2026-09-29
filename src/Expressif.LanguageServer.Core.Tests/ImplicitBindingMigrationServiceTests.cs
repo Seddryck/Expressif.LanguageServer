@@ -113,6 +113,16 @@ public sealed class ImplicitBindingMigrationServiceTests
         Assert.That(source.Substring(migration.Start, migration.Length), Is.EqualTo("subtract"));
     }
 
+    [Test]
+    public void GetMigrations_UnknownTypeLiteral_ReturnsNone()
+    {
+        const string source = "array() | sort-by(.progression -> :nume)";
+
+        var result = service.GetMigrations(Parse(source));
+
+        Assert.That(result, Is.Empty);
+    }
+
     private static Expressif.Syntax.RootExpressionSyntax Parse(string text)
     {
         var result = new SyntaxService().Parse(text);

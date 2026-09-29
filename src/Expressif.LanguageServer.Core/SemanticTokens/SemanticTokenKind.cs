@@ -8,5 +8,6 @@ public enum SemanticTokenKind
     String,
     Number,
     Operator,
-    Comment
+    Comment,
+    Type
 }

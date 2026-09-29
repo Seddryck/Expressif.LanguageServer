@@ -104,6 +104,52 @@ public sealed class CompletionServiceTests
         Assert.That(result, Is.Empty);
     }
 
+    [Test]
+    public void GetCompletions_TypeLiteralPrefix_ReturnsMatchingTypes()
+    {
+        const string text = ".progression -> :nume";
+
+        var result = service.GetCompletions(text, text.Length);
+
+        var suggestion = result.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(suggestion.Label, Is.EqualTo("numeric"));
+            Assert.That(suggestion.InsertText, Is.EqualTo("numeric"));
+            Assert.That(suggestion.ReplacementStart, Is.EqualTo(text.IndexOf("nume", StringComparison.Ordinal)));
+            Assert.That(suggestion.ReplacementLength, Is.EqualTo("nume".Length));
+            Assert.That(suggestion.Kind, Is.EqualTo(CompletionSuggestionKind.Type));
+        });
+    }
+
+    [Test]
+    public void GetCompletions_EmptyTypeLiteral_ReturnsSupportedTypes()
+    {
+        const string text = ".progression -> :";
+
+        var result = service.GetCompletions(text, text.Length);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Select(suggestion => suggestion.Label), Does.Contain("numeric"));
+            Assert.That(result.Select(suggestion => suggestion.Label), Does.Contain("text"));
+            Assert.That(result.Select(suggestion => suggestion.Label), Does.Contain("datetime"));
+            Assert.That(result, Is.All.Matches<CompletionSuggestion>(suggestion =>
+                suggestion.Kind == CompletionSuggestionKind.Type));
+        });
+    }
+
+    [Test]
+    public void GetCompletions_ColonOutsideTypeLiteral_ReturnsNoTypes()
+    {
+        const string text = "{progression := nume}";
+        var cursor = text.IndexOf("nume", StringComparison.Ordinal) + "nume".Length;
+
+        var result = service.GetCompletions(text, cursor);
+
+        Assert.That(result, Is.Empty);
+    }
+
     [TestCase("~upp", 1, 3)]
     [TestCase("upp~", 0, 3)]
     public void GetCompletions_TupleBindingShorthand_ReplacesOnlyCallableName(

@@ -1,6 +1,6 @@
 using Expressif.LanguageServer.Core.CodeActions;
-using Expressif.LanguageServer.Core.Documents;
 using Expressif.LanguageServer.Core.Diagnostics;
+using Expressif.LanguageServer.Core.Documents;
 using Expressif.LanguageServer.Core.Syntax;
 using Expressif.LanguageServer.Handlers;
 using Moq;
@@ -129,6 +129,31 @@ public sealed class CodeActionHandlerTests
             TextDocument = new TextDocumentIdentifier { Uri = uri },
             Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
                 new Position(0, 9), new Position(0, 17)),
+            Context = new CodeActionContext()
+        }, CancellationToken.None);
+
+        Assert.That(result, Is.Empty);
+    }
+
+    [Test]
+    public async Task Handle_UnknownTypeLiteral_ReturnsNoActionsWithoutFailingAsync()
+    {
+        const string source = "array() | sort-by(.progression -> :nume)";
+        var documents = new DocumentStore(new SyntaxService());
+        var uri = DocumentUri.FromFileSystemPath("/workspace/example.expr");
+        documents.Open(uri.ToUri(), source, 1);
+        var functionActions = new Mock<IFunctionCodeActionService>();
+        functionActions.Setup(service => service.GetReplacements(
+                It.IsAny<Expressif.Syntax.RootExpressionSyntax>(), It.IsAny<int>(), It.IsAny<int>()))
+            .Returns([]);
+        var handler = new CodeActionHandler(documents, functionActions.Object,
+            new LegacyTupleReferenceService(), new ImplicitBindingMigrationService());
+
+        var result = await handler.Handle(new CodeActionParams
+        {
+            TextDocument = new TextDocumentIdentifier { Uri = uri },
+            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                new Position(0, source.Length), new Position(0, source.Length)),
             Context = new CodeActionContext()
         }, CancellationToken.None);
 

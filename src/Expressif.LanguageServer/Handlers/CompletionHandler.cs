@@ -41,7 +41,11 @@ public sealed class CompletionHandler(IDocumentStore documents, ICompletionServi
                 InsertTextFormat = suggestion.SnippetParameters is { Count: > 0 }
                     ? InsertTextFormat.Snippet
                     : InsertTextFormat.PlainText,
-                Kind = CompletionItemKind.Function,
+                Kind = suggestion.Kind switch
+                {
+                    CompletionSuggestionKind.Type => CompletionItemKind.TypeParameter,
+                    _ => CompletionItemKind.Function
+                },
                 SortText = $"{(suggestion.Deprecated ? 1 : 0)}-{(suggestion.IsCanonical ? 0 : 1)}-{index:D5}"
             });
         return Task.FromResult(new CompletionList(items));
@@ -52,7 +56,7 @@ public sealed class CompletionHandler(IDocumentStore documents, ICompletionServi
         {
             DocumentSelector = TextDocumentSelector.ForLanguage("expressif"),
             ResolveProvider = false,
-            TriggerCharacters = new Container<string>("|", "-")
+            TriggerCharacters = new Container<string>("|", "-", ":")
         };
 
     private static string CreateInsertText(CompletionSuggestion suggestion)
@@ -72,6 +76,9 @@ public sealed class CompletionHandler(IDocumentStore documents, ICompletionServi
 
     private static string CreateDetail(CompletionSuggestion suggestion)
     {
+        if (suggestion.Kind == CompletionSuggestionKind.Type)
+            return "Expressif type";
+
         if (!suggestion.Deprecated)
             return "Expressif function";
 

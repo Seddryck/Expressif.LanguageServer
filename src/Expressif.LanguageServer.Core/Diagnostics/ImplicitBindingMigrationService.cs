@@ -1,5 +1,7 @@
+using Expressif.Bindings;
 using Expressif.Semantics;
 using Expressif.Syntax;
+using Expressif.Types;
 
 namespace Expressif.LanguageServer.Core.Diagnostics;
 
@@ -11,17 +13,24 @@ public sealed class ImplicitBindingMigrationService : IImplicitBindingMigrationS
     {
         ArgumentNullException.ThrowIfNull(syntaxTree);
 
-        return analyzer.Analyze(syntaxTree)
-            .Where(use => use.Span is not null)
-            .Select(use => new ImplicitBindingMigration(
-                use.Operator,
-                use.Callable,
-                use.Code,
-                use.Message,
-                use.Span!.Value.Start,
-                use.Span.Value.Length,
-                CreateReplacements(use)))
-            .ToArray();
+        try
+        {
+            return analyzer.Analyze(syntaxTree)
+                .Where(use => use.Span is not null)
+                .Select(use => new ImplicitBindingMigration(
+                    use.Operator,
+                    use.Callable,
+                    use.Code,
+                    use.Message,
+                    use.Span!.Value.Start,
+                    use.Span.Value.Length,
+                    CreateReplacements(use)))
+                .ToArray();
+        }
+        catch (Exception exception) when (exception is BindingException or UnknownExpressifTypeException)
+        {
+            return [];
+        }
     }
 
     private static IReadOnlyList<ImplicitBindingReplacement> CreateReplacements(LegacyTupleBindingUse use)

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add **Expressif File** to VS Code's **New File...** picker.
 - Open evaluation results as reusable read-only editor documents beside the Expressif script.
 - Include public aggregations in function completion, hover, signature help, and diagnostics.
 - Add persistent compact/pretty evaluation output settings with configurable pretty indentation.

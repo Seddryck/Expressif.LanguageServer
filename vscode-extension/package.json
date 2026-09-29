@@ -23,6 +23,7 @@
   ],
   "activationEvents": [
     "onLanguage:expressif",
+    "onCommand:expressif.newFile",
     "onCommand:expressif.runExpression",
     "onCommand:expressif.runExpressionWithPreviousSelections"
   ],
@@ -39,6 +40,13 @@
   "contributes": {
     "commands": [
       {
+        "command": "expressif.newFile",
+        "title": "New Expressif File",
+        "shortTitle": "Expressif File",
+        "category": "Expressif",
+        "icon": "$(new-file)"
+      },
+      {
         "command": "expressif.runExpression",
         "title": "Run Expression",
         "category": "Expressif",
@@ -51,6 +59,12 @@
       }
     ],
     "menus": {
+      "file/newFile": [
+        {
+          "command": "expressif.newFile",
+          "group": "file"
+        }
+      ],
       "editor/title": [
         {
           "command": "expressif.runExpression",

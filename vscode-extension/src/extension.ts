@@ -77,6 +77,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(client);
   context.subscriptions.push(vscode.commands.registerCommand(
+    'expressif.newFile',
+    createExpressifFile
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand(
     'expressif.runExpression',
     () => runExpression(evaluationResults, false)
   ));
@@ -92,6 +96,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel.show(true);
     throw error;
   }
+}
+
+async function createExpressifFile(): Promise<void> {
+  const document = await vscode.workspace.openTextDocument({ language: 'expressif' });
+  await vscode.window.showTextDocument(document);
 }
 
 async function runExpression(

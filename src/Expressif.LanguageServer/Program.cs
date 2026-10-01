@@ -55,6 +55,7 @@ public static class Program
             .WithHandler<SemanticTokensHandler>()
             .WithHandler<CodeActionHandler>()
             .WithHandler<DocumentFormattingHandler>()
+            .WithHandler<DocumentRangeFormattingHandler>()
             .WithHandler<EvaluateExpressionHandler>());
 
         await server.WaitForExit;

@@ -46,13 +46,13 @@ public sealed class DocumentFormattingHandler(
         DocumentSelector = TextDocumentSelector.ForLanguage("expressif")
     };
 
-    private static string DetectNewLine(string text)
+    internal static string DetectNewLine(string text)
     {
         var newline = text.IndexOf('\n');
         return newline > 0 && text[newline - 1] == '\r' ? "\r\n" : "\n";
     }
 
-    private static bool EndsWithNewLine(string text)
+    internal static bool EndsWithNewLine(string text)
         => text.EndsWith('\n') || text.EndsWith('\r');
 
     private static Position GetEndPosition(string text)

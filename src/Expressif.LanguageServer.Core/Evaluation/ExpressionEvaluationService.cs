@@ -11,6 +11,29 @@ public sealed class ExpressionEvaluationService : IExpressionEvaluationService
         EvaluationInputFormat inputFormat = EvaluationInputFormat.Literal,
         EvaluationOutputFormat outputFormat = EvaluationOutputFormat.Expressif,
         EvaluationOutputOptions? outputOptions = null)
+        => EvaluateCore(
+            expression,
+            input is null ? null : () => EvaluationInputParser.Parse(input, inputFormat),
+            outputFormat,
+            outputOptions);
+
+    public ExpressionEvaluationResult EvaluateMany(
+        string expression,
+        IReadOnlyList<string> inputs,
+        EvaluationInputFormat inputFormat,
+        EvaluationOutputFormat outputFormat = EvaluationOutputFormat.Expressif,
+        EvaluationOutputOptions? outputOptions = null)
+        => EvaluateCore(
+            expression,
+            () => EvaluationInputParser.ParseMany(inputs, inputFormat),
+            outputFormat,
+            outputOptions);
+
+    private static ExpressionEvaluationResult EvaluateCore(
+        string expression,
+        Func<object?>? readInput,
+        EvaluationOutputFormat outputFormat,
+        EvaluationOutputOptions? outputOptions)
     {
         if (string.IsNullOrWhiteSpace(expression))
             return ExpressionEvaluationResult.Failure("The expression is empty.");
@@ -18,13 +41,13 @@ public sealed class ExpressionEvaluationService : IExpressionEvaluationService
         try
         {
             outputOptions ??= new EvaluationOutputOptions();
-            if (input is null)
+            if (readInput is null)
             {
                 var closedResult = Expression.CreateClosed(expression, new Context()).Evaluate(null);
                 return ExpressionEvaluationResult.Success(Serialize(closedResult, outputFormat, outputOptions));
             }
 
-            var value = EvaluationInputParser.Parse(input, inputFormat);
+            var value = readInput();
             var result = Expression.Create(expression, new Context()).Evaluate(value);
             return ExpressionEvaluationResult.Success(Serialize(result, outputFormat, outputOptions));
         }

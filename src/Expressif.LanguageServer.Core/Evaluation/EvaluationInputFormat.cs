@@ -5,4 +5,5 @@ public enum EvaluationInputFormat
     Literal,
     Json,
     Csv,
+    JsonFiles,
 }

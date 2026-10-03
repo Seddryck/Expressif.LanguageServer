@@ -8,4 +8,11 @@ public interface IExpressionEvaluationService
         EvaluationInputFormat inputFormat = EvaluationInputFormat.Literal,
         EvaluationOutputFormat outputFormat = EvaluationOutputFormat.Expressif,
         EvaluationOutputOptions? outputOptions = null);
+
+    ExpressionEvaluationResult EvaluateMany(
+        string expression,
+        IReadOnlyList<string> inputs,
+        EvaluationInputFormat inputFormat,
+        EvaluationOutputFormat outputFormat = EvaluationOutputFormat.Expressif,
+        EvaluationOutputOptions? outputOptions = null);
 }

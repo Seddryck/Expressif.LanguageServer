@@ -36,17 +36,32 @@ public sealed class FunctionHoverService(
             return null;
 
         var parameters = string.Join(", ", metadata.Parameters.Select(parameter => parameter.Label));
+        var description = call.TupleBindingDirection is { } direction
+            ? $"{metadata.Description}\n\n{CreateTupleBindingDescription(direction, metadata.SupportsTupleBinding)}"
+            : metadata.Description;
         var implicitBinding = implicitBindings.GetMigrations(syntaxTree)
             .FirstOrDefault(migration => cursorOffset >= migration.Start &&
                                          cursorOffset < migration.Start + migration.Length);
         return new FunctionHover(
             $"{metadata.Name}({parameters})",
-            metadata.Description,
+            description,
             call.NameSpan.Start,
             call.NameSpan.Length,
             implicitBinding is null
                 ? CreateLifecycleNotice(metadata)
                 : $"Deprecated usage. {implicitBinding.Message}");
+    }
+
+    private static string CreateTupleBindingDescription(
+        TupleBindingDirection direction,
+        bool supportsTupleBinding)
+    {
+        if (!supportsTupleBinding)
+            return "This callable does not support tuple binding.";
+
+        return direction == TupleBindingDirection.Postfix
+            ? "Postfix tuple binding uses the first tuple item as pipeline input and the remaining items as explicit arguments in order."
+            : "Prefix tuple binding uses the last tuple item as pipeline input and the preceding items as explicit arguments in their original order.";
     }
 
     private static string? CreateLifecycleNotice(FunctionMetadata function)

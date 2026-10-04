@@ -115,4 +115,22 @@ public sealed class ExpressifFunctionCatalogTests
             Assert.That(times.MinimumCardinality, Is.Zero);
         });
     }
+
+    [Test]
+    public void Functions_ExposeSharedTupleBindingEligibility()
+    {
+        var functions = new ExpressifFunctionCatalog().Functions;
+        var tupleSignatures = functions.Single(function => function.Name == "tuple").TupleBindingSignatures;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(functions.Single(function => function.Name == "subtract").SupportsTupleBinding, Is.True);
+            Assert.That(functions.Single(function => function.Name == "map").SupportsTupleBinding, Is.False);
+            Assert.That(tupleSignatures, Is.Not.Null);
+            Assert.That(tupleSignatures!.Any(signature =>
+                signature.SupportsTupleBinding && signature.Variadic), Is.True);
+            Assert.That(functions.Single(function => function.Name == "is-lower-case").SupportsTupleBinding,
+                Is.True);
+        });
+    }
 }

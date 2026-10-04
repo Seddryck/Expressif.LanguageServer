@@ -35,20 +35,21 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
                 ProbeName,
                 text.AsSpan(tokenEnd))
             : string.Concat(text.AsSpan(0, prefixStart), ProbeName, text.AsSpan(tokenEnd));
-        if (!ProbeIsFunction(probeText) &&
-            (!hasOpeningParenthesis || !ProbeIsFunction($"{probeText})")))
+        var context = GetFunctionContext(probeText);
+        if (context == FunctionCompletionContext.None && hasOpeningParenthesis)
+            context = GetFunctionContext($"{probeText})");
+        if (context == FunctionCompletionContext.None)
             return [];
 
+        var isTupleBinding = context is FunctionCompletionContext.TupleBindingPrefix or
+            FunctionCompletionContext.TupleBindingPostfix;
         var needsLeadingSpace = pipelineOperator is { } precedingOperator
             && precedingOperator.Start + precedingOperator.Length == prefixStart;
         var replacementStart = needsLeadingSpace ? cursorOffset : prefixStart;
         var replacementLength = needsLeadingSpace ? tokenEnd - cursorOffset : tokenEnd - prefixStart;
         return functions.Functions
-            .SelectMany(function => new[]
-                {
-                    CreateSuggestion(function, function.Name, true)
-                }
-                .Concat(function.Aliases.Select(alias => CreateSuggestion(function, alias, false))))
+            .Where(function => !isTupleBinding || function.SupportsTupleBinding)
+            .SelectMany(CreateSuggestions)
             .Where(suggestion => suggestion.Label.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             .OrderBy(suggestion => suggestion.Deprecated)
             .ThenByDescending(suggestion => suggestion.IsCanonical)
@@ -56,23 +57,45 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
             .DistinctBy(suggestion => suggestion.Label, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        CompletionSuggestion CreateSuggestion(FunctionMetadata function, string functionName, bool isCanonical)
+        IEnumerable<CompletionSuggestion> CreateSuggestions(FunctionMetadata function)
+        {
+            foreach (var (name, canonical) in new[] { (function.Name, true) }
+                         .Concat(function.Aliases.Select(alias => (alias, false))))
+            {
+                yield return CreateSuggestion(function, name, canonical, isTupleBinding);
+                if (!isTupleBinding && !hasOpeningParenthesis && function.SupportsTupleBinding)
+                    yield return CreateSuggestion(function, name, canonical, true, producePostfix: true);
+            }
+        }
+
+        CompletionSuggestion CreateSuggestion(
+            FunctionMetadata function,
+            string functionName,
+            bool isCanonical,
+            bool tupleBinding,
+            bool producePostfix = false)
             => new(
-                functionName,
-                needsLeadingSpace ? $" {functionName}" : functionName,
+                producePostfix ? $"{functionName}~" : functionName,
+                $"{(needsLeadingSpace ? " " : string.Empty)}{functionName}{(producePostfix ? "~" : string.Empty)}",
                 isCanonical,
                 replacementStart,
                 replacementLength,
-                function.Description,
+                tupleBinding
+                    ? $"{function.Description}\n\n{CreateTupleBindingDescription(producePostfix || context == FunctionCompletionContext.TupleBindingPostfix)}"
+                    : function.Description,
                 function.Deprecated,
                 function.Replacement,
                 function.Sunset,
-                hasOpeningParenthesis
+                hasOpeningParenthesis || tupleBinding
                     ? null
                     : function.Parameters
                         .Where(parameter => !parameter.Optional || parameter.Variadic)
                         .Select(parameter => parameter.Name)
                         .ToArray());
+
+        static string CreateTupleBindingDescription(bool postfix) => postfix
+            ? "Postfix tuple binding uses the first tuple item as pipeline input and the remaining items as explicit arguments in order."
+            : "Prefix tuple binding uses the last tuple item as pipeline input and the preceding items as explicit arguments in their original order.";
     }
 
     private static bool TryGetTypeLiteralCompletion(
@@ -119,21 +142,29 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
         return true;
     }
 
-    private static bool ProbeIsFunction(string probeText)
+    private static FunctionCompletionContext GetFunctionContext(string probeText)
     {
         try
         {
             var syntax = ExpressifSyntax.Parse(probeText);
-            return DescendantsAndSelf(syntax).Any(node => node switch
+            var node = DescendantsAndSelf(syntax).FirstOrDefault(node => node switch
             {
                 FunctionCallSyntax function => function.Name.Equals(ProbeName, StringComparison.Ordinal),
                 TupleBindingShorthandSyntax shorthand => shorthand.Name.Equals(ProbeName, StringComparison.Ordinal),
                 _ => false
             });
+            return node switch
+            {
+                FunctionCallSyntax => FunctionCompletionContext.Function,
+                TupleBindingShorthandSyntax { Direction: TupleBindingDirection.Prefix } =>
+                    FunctionCompletionContext.TupleBindingPrefix,
+                TupleBindingShorthandSyntax => FunctionCompletionContext.TupleBindingPostfix,
+                _ => FunctionCompletionContext.None
+            };
         }
         catch (ExpressifSyntaxException)
         {
-            return false;
+            return FunctionCompletionContext.None;
         }
     }
 
@@ -184,5 +215,13 @@ public sealed class CompletionService(IFunctionCatalog functions) : ICompletionS
             return (index - 1, 2);
 
         return index >= 0 && text[index] == '|' ? (index, 1) : null;
+    }
+
+    private enum FunctionCompletionContext
+    {
+        None,
+        Function,
+        TupleBindingPrefix,
+        TupleBindingPostfix
     }
 }

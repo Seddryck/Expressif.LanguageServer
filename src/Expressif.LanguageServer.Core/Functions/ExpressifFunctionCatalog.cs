@@ -27,7 +27,9 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
                 function.Deprecated,
                 function.Replacement,
                 function.Sunset,
-                HasSafeDirectReplacement(function)))
+                HasSafeDirectReplacement(function),
+                function.ImplementationType,
+                function.Signatures.Select(CreateTupleBindingSignatureMetadata).ToArray()))
             .ToArray();
 
         var predicates = new PredicateIntrospector()
@@ -40,7 +42,11 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
                     predicate.ImplementationType,
                     parameter)).ToArray(),
                 predicate.Summary,
-                predicate.Scope))
+                predicate.Scope,
+                ImplementationType: predicate.ImplementationType,
+                TupleBindingSignatures: predicate.Signatures
+                    .Select(CreateTupleBindingSignatureMetadata)
+                    .ToArray()))
             .ToArray();
 
         var aggregations = new AccumulatorIntrospector()
@@ -83,7 +89,12 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
                     .ToArray(),
                 parameters,
                 aggregation.Summary,
-                aggregation.Scope);
+                aggregation.Scope,
+                ImplementationType: aggregation.ImplementationType,
+                TupleBindingSignatures: Expressif.Functions.TupleBindingCapabilities
+                    .Describe(aggregation.ImplementationType)
+                    .Select(CreateTupleBindingSignatureMetadata)
+                    .ToArray());
 
             foreach (var alias in aggregation.DeprecatedAliases)
                 yield return new FunctionMetadata(
@@ -94,9 +105,21 @@ public sealed class ExpressifFunctionCatalog : IFunctionCatalog
                     aggregation.Scope,
                     Deprecated: true,
                     Replacement: alias.Replacement,
-                    SafeDirectReplacement: true);
+                    SafeDirectReplacement: true,
+                    ImplementationType: aggregation.ImplementationType,
+                    TupleBindingSignatures: Expressif.Functions.TupleBindingCapabilities
+                        .Describe(aggregation.ImplementationType)
+                        .Select(CreateTupleBindingSignatureMetadata)
+                        .ToArray());
         }
     }
+
+    private static TupleBindingSignatureMetadata CreateTupleBindingSignatureMetadata(
+        Expressif.Functions.TupleBindingSignature signature) => new(
+            signature.SupportsTupleBinding,
+            signature.Variadic,
+            signature.MinimumArguments,
+            signature.MaximumArguments);
 
     private static FunctionParameterMetadata CreateParameterMetadata(
         Type implementationType,

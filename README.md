@@ -35,10 +35,10 @@ Expressif.LanguageServer exposes editor-independent language features through th
 
 | Feature | Status | Description |
 | --- | --- | --- |
-| Diagnostics | ✅ | Reports syntax errors, invalid function calls, lifecycle/deprecation warnings and supported migration warnings. |
-| Function completion | ✅ | Completes Expressif functions and aliases using the shared function catalog. |
-| Hover | ✅ | Shows function information and contextual information for fields and input bindings. |
-| Signature help | ✅ | Shows function signatures and the active parameter while editing calls. |
+| Diagnostics | ✅ | Reports syntax errors, invalid calls and tuple bindings, lifecycle/deprecation warnings and supported migration warnings. |
+| Function completion | ✅ | Completes Expressif functions, aliases and eligible tuple-binding shorthands using the shared function catalog. |
+| Hover | ✅ | Shows function information, tuple-binding direction and contextual information for fields and input bindings. |
+| Signature help | ✅ | Shows function signatures, tuple-binding argument mapping and the active parameter while editing calls. |
 | Semantic highlighting | ✅ | Provides semantic tokens for Expressif language constructs. |
 | Document highlights | ✅ | Highlights relationships between field references or positional tuple references and their supplying expressions or tuple elements. |
 | Document formatting | ✅ | Formats complete documents or safe, complete syntax within a selection using the server's canonical formatting rules. |
@@ -167,8 +167,6 @@ The language-server extension currently owns the `expressif` language registrati
 Completion is currently based on the function catalog rather than inferred input types. Type-aware ranking is tracked by [#58](https://github.com/Seddryck/Expressif.LanguageServer/issues/58).
 
 Whole-document and selection formatting are available, while formatting as you type is tracked separately by [#67](https://github.com/Seddryck/Expressif.LanguageServer/issues/67).
-
-Additional semantic validation and editor assistance for tuple-binding shorthands is tracked by [#102](https://github.com/Seddryck/Expressif.LanguageServer/issues/102).
 
 ## Development
 

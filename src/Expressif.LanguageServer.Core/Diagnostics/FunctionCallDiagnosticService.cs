@@ -1,4 +1,7 @@
 using Expressif.LanguageServer.Core.Functions;
+using Expressif.LanguageServer.Core.Syntax;
+using Expressif.Functions;
+using Expressif.Semantics;
 using Expressif.Syntax;
 
 namespace Expressif.LanguageServer.Core.Diagnostics;
@@ -6,6 +9,8 @@ namespace Expressif.LanguageServer.Core.Diagnostics;
 public sealed class FunctionCallDiagnosticService(IFunctionCatalog functions)
     : IFunctionCallDiagnosticService
 {
+    private readonly TupleBindingAnalyzer tupleBindings = new(new CatalogTypeMapper(functions));
+
     public IReadOnlyList<FunctionCallDiagnostic> GetDiagnostics(RootExpressionSyntax syntaxTree)
     {
         ArgumentNullException.ThrowIfNull(syntaxTree);
@@ -13,7 +18,46 @@ public sealed class FunctionCallDiagnosticService(IFunctionCatalog functions)
         return DescendantsAndSelf(syntaxTree)
             .OfType<FunctionCallSyntax>()
             .SelectMany(GetDiagnostics)
+            .Concat(GetTupleBindingDiagnostics(syntaxTree))
             .ToArray();
+    }
+
+    private IEnumerable<FunctionCallDiagnostic> GetTupleBindingDiagnostics(RootExpressionSyntax syntaxTree)
+    {
+        foreach (var use in tupleBindings.Analyze(syntaxTree).Where(use => use.Failure is not null))
+        {
+            var range = GetTupleBindingTargetRange(syntaxTree, use);
+            yield return new(
+                use.Message ?? $"Invalid tuple binding target '{use.Name}'.",
+                range.Start,
+                range.Length);
+        }
+    }
+
+    private static SourceSpan GetTupleBindingTargetRange(RootExpressionSyntax syntaxTree, TupleBindingUse use)
+    {
+        if (use.Span is not { } operationSpan)
+            return new SourceSpan(0, 0);
+
+        var shorthand = CallableSyntaxReference.DescendantsOf(syntaxTree)
+            .FirstOrDefault(reference => reference.TupleBindingDirection is not null &&
+                                         reference.Span == operationSpan);
+        if (shorthand is not null)
+            return shorthand.NameSpan;
+
+        var explicitBind = DescendantsAndSelf(syntaxTree)
+            .OfType<FunctionCallSyntax>()
+            .FirstOrDefault(call => call.Span == operationSpan &&
+                                    call.Name.Equals("bind", StringComparison.OrdinalIgnoreCase));
+        var argument = explicitBind?.Arguments.FirstOrDefault();
+        if (argument is not null && use.Name is not null)
+        {
+            var relativeStart = argument.Text.IndexOf(use.Name, StringComparison.OrdinalIgnoreCase);
+            if (relativeStart >= 0)
+                return new SourceSpan(argument.Span.Start + relativeStart, use.Name.Length);
+        }
+
+        return operationSpan;
     }
 
     private IEnumerable<FunctionCallDiagnostic> GetDiagnostics(FunctionCallSyntax call)
@@ -67,5 +111,20 @@ public sealed class FunctionCallDiagnosticService(IFunctionCatalog functions)
         foreach (var child in node.Children)
         foreach (var descendant in DescendantsAndSelf(child))
             yield return descendant;
+    }
+
+    private sealed class CatalogTypeMapper(IFunctionCatalog catalog) : BaseTypeMapper
+    {
+        protected override IDictionary<string, Type> Initialize()
+        {
+            var mapping = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+            foreach (var function in catalog.Functions.Where(function => function.ImplementationType is not null))
+            {
+                foreach (var name in function.Aliases.Prepend(function.Name))
+                    mapping.TryAdd(name, function.ImplementationType!);
+            }
+
+            return mapping;
+        }
     }
 }

@@ -10,7 +10,8 @@ public sealed class FunctionHoverServiceTests
 {
     private static readonly IFunctionCatalog Catalog = new TestFunctionCatalog(
     [
-        new("lower", ["text-to-lower"], [], "Lowercase text.", "Text"),
+        new("lower", ["text-to-lower"], [], "Lowercase text.", "Text",
+            TupleBindingSignatures: [new(true, false, 0, 0)]),
         new("token", [],
         [
             new("index", false, "Token index."),
@@ -157,6 +158,20 @@ public sealed class FunctionHoverServiceTests
             Assert.That(result?.Signature, Is.EqualTo("lower()"));
             Assert.That(result?.IdentifierStart, Is.EqualTo(expectedStart));
             Assert.That(result?.IdentifierLength, Is.EqualTo(text.Trim('~').Length));
+        });
+    }
+
+    [TestCase("lower~", "first tuple item", "remaining items")]
+    [TestCase("~lower", "last tuple item", "preceding items")]
+    public void GetHover_TupleBindingShorthand_ExplainsDirectionalMapping(
+        string text, string inputMapping, string argumentMapping)
+    {
+        var result = service.GetHover(Parse(text), text.IndexOf("lower", StringComparison.Ordinal));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result?.Description, Does.Contain(inputMapping));
+            Assert.That(result?.Description, Does.Contain(argumentMapping));
         });
     }
 

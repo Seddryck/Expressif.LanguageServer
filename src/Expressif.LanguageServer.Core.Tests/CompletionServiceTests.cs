@@ -11,7 +11,8 @@ public sealed class CompletionServiceTests
     [
         new("lower", ["text-to-lower"], [], "Lowercase text.", "Text"),
         new("title-case", ["text-to-title-case"], [], "Title-case text.", "Text"),
-        new("upper", ["text-to-upper"], [], "Uppercase text.", "Text")
+        new("upper", ["text-to-upper"], [], "Uppercase text.", "Text",
+            TupleBindingSignatures: [new(true, false, 0, 0)])
     ]);
 
     private readonly CompletionService service = new(Catalog);
@@ -26,8 +27,8 @@ public sealed class CompletionServiceTests
         Assert.That(result.Select(suggestion => suggestion.Label), Does.Contain("upper"));
     }
 
-    [TestCase("@foo | text-to-", "text-to-", 3)]
-    [TestCase("text-to-", "text-to-", 3)]
+    [TestCase("@foo | text-to-", "text-to-", 4)]
+    [TestCase("text-to-", "text-to-", 4)]
     public void GetCompletions_FunctionPrefix_ReturnsMatchingNames(
         string text, string prefix, int expectedCount)
     {
@@ -167,6 +168,35 @@ public sealed class CompletionServiceTests
         });
     }
 
+    [TestCase("~", "upper")]
+    [TestCase("~upp", "upper")]
+    [TestCase("upp~", "upper")]
+    public void GetCompletions_TupleBindingShorthand_OffersOnlyEligibleCallables(
+        string text, string expected)
+    {
+        var result = service.GetCompletions(text, text.IndexOf('~') == 0 ? text.Length : text.IndexOf('~'));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Select(suggestion => suggestion.Label), Does.Contain(expected));
+            Assert.That(result.Select(suggestion => suggestion.Label), Does.Not.Contain("lower"));
+            Assert.That(result.All(suggestion => suggestion.SnippetParameters is null), Is.True);
+        });
+    }
+
+    [Test]
+    public void GetCompletions_FunctionPrefix_OffersEligiblePostfixShorthand()
+    {
+        var suggestion = service.GetCompletions("upp", 3)
+            .Single(item => item.Label == "upper~");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(suggestion.InsertText, Is.EqualTo("upper~"));
+            Assert.That(suggestion.SnippetParameters, Is.Null);
+        });
+    }
+
     [Test]
     public void GetCompletions_CursorInsideFunctionName_ReplacesWholeToken()
     {
@@ -190,7 +220,8 @@ public sealed class CompletionServiceTests
 
         Assert.That(result.Select(item => item.Label), Is.EqualTo(new[]
         {
-            "lower", "title-case", "upper", "text-to-lower", "text-to-title-case", "text-to-upper"
+            "lower", "title-case", "upper", "upper~",
+            "text-to-lower", "text-to-title-case", "text-to-upper", "text-to-upper~"
         }));
     }
 

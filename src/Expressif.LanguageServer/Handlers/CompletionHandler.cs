@@ -56,7 +56,7 @@ public sealed class CompletionHandler(IDocumentStore documents, ICompletionServi
         {
             DocumentSelector = TextDocumentSelector.ForLanguage("expressif"),
             ResolveProvider = false,
-            TriggerCharacters = new Container<string>("|", "-", ":")
+            TriggerCharacters = new Container<string>("|", "-", ":", "~")
         };
 
     private static string CreateInsertText(CompletionSuggestion suggestion)

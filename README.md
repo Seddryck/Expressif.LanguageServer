@@ -2,7 +2,7 @@
 
 ![Expressif logo](https://raw.githubusercontent.com/Seddryck/Expressif.LanguageServer/main/assets/expressif-icon-256.png)
 
-Language Server Protocol support for [Expressif](https://github.com/Seddryck/Expressif), bringing diagnostics, completion, hover information, signature help, semantic highlighting, formatting, quick fixes and expression evaluation to your editor.
+Language Server Protocol support for [Expressif](https://github.com/Seddryck/Expressif), bringing diagnostics, completion, hover information, signature help, semantic highlighting, formatting, folding, quick fixes and expression evaluation to your editor.
 
 The repository also contains **Expressif Language Support**, a thin Visual Studio Code client that bundles and connects to the language server.
 
@@ -40,13 +40,16 @@ Expressif.LanguageServer exposes editor-independent language features through th
 | Hover | ✅ | Shows function information and contextual information for fields and input bindings. |
 | Signature help | ✅ | Shows function signatures and the active parameter while editing calls. |
 | Semantic highlighting | ✅ | Provides semantic tokens for Expressif language constructs. |
-| Document highlights | ✅ | Highlights relationships between field references and their supplying expressions. |
-| Document formatting | ✅ | Formats complete Expressif documents using the server's canonical formatting rules. |
+| Document highlights | ✅ | Highlights relationships between field references or positional tuple references and their supplying expressions or tuple elements. |
+| Document formatting | ✅ | Formats complete documents or safe, complete syntax within a selection using the server's canonical formatting rules. |
+| Folding | ✅ | Provides syntax-aware folding for multiline pipelines, delimited expressions, input-bound bodies and block comments. |
 | Quick fixes | ✅ | Offers supported replacements for deprecated functions, legacy tuple references and binding migrations. |
 | Expression evaluation | ✅ | Evaluates a selection or complete Expressif document with optional input data. |
 | On-type formatting | Planned | Tracked by [#67](https://github.com/Seddryck/Expressif.LanguageServer/issues/67). |
 | Type-aware completion ranking | Planned | Tracked by [#58](https://github.com/Seddryck/Expressif.LanguageServer/issues/58). |
 | Go to definition / references / rename | — | Not currently implemented. |
+
+![Expressif source editing in Visual Studio Code with semantic highlighting and function hover](assets/screenshot-001.png)
 
 The language server communicates with editors over standard input and output. Editor-specific behavior belongs in thin clients such as the VS Code extension.
 
@@ -88,7 +91,15 @@ The process communicates using the Language Server Protocol over standard input 
 
 ## Using Visual Studio Code
 
-Open a `.expressif` or `.expr` file after installing the extension. The language server starts automatically and provides diagnostics, completion, hover information, signature help, semantic highlighting, formatting and quick fixes.
+Open a `.expressif` or `.expr` file after installing the extension. The language server starts automatically and provides diagnostics, completion, hover information, signature help, semantic highlighting, formatting, folding and quick fixes.
+
+### Format and fold expressions
+
+Run **Format Document** from an Expressif editor to format the complete document, or select complete Expressif syntax and run **Format Selection** to format only that selection. Partial or unsafe selections are left unchanged.
+
+From the Explorer, right-click a `.expressif` or `.expr` file and run **Expressif: Format Document** to format it without opening it first.
+
+VS Code displays folding controls automatically for multiline pipelines, delimited expressions and literals, input-bound expression bodies, and block comments.
 
 ### Run an expression
 
@@ -144,13 +155,11 @@ Language-server logs and protocol traces are available from **View → Output �
 
 Some pieces of the editor experience are deliberately still evolving.
 
-Evaluation results currently use the Output panel. [#115](https://github.com/Seddryck/Expressif.LanguageServer/issues/115) will move them to a regular read-only editor pane.
-
 The language-server extension currently owns the `expressif` language registration itself. [#117](https://github.com/Seddryck/Expressif.LanguageServer/issues/117) will make it depend on the dedicated Expressif syntax-highlighting extension instead.
 
 Completion is currently based on the function catalog rather than inferred input types. Type-aware ranking is tracked by [#58](https://github.com/Seddryck/Expressif.LanguageServer/issues/58).
 
-Whole-document formatting is available, while formatting as you type is tracked separately by [#67](https://github.com/Seddryck/Expressif.LanguageServer/issues/67).
+Whole-document and selection formatting are available, while formatting as you type is tracked separately by [#67](https://github.com/Seddryck/Expressif.LanguageServer/issues/67).
 
 Additional semantic validation and editor assistance for tuple-binding shorthands is tracked by [#102](https://github.com/Seddryck/Expressif.LanguageServer/issues/102).
 

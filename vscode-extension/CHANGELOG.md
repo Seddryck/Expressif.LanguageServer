@@ -9,6 +9,7 @@
 - Add persistent compact/pretty evaluation output settings with configurable pretty indentation.
 - Highlight deprecated implicit tuple binding and offer safe migrations to `~function` or `function~`.
 - Support completion, hover, semantic highlighting, and callable-aware actions for explicit tuple-binding shorthand.
+- Validate tuple-binding targets and known tuple shapes, filter shorthand completion to eligible callables, and explain directional tuple mapping in hover and signature help.
 - Prompt for `.expressif` or `.json` output and serialize evaluation results in the selected format.
 - Add `Ctrl+Enter` for quick reruns with the last selected input and output format, and use
   `Ctrl+Shift+Enter` to choose new options.

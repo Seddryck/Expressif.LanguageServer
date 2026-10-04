@@ -44,7 +44,7 @@ public sealed class SignatureHelpHandler(
         SignatureHelpCapability capability, ClientCapabilities clientCapabilities) => new()
         {
             DocumentSelector = TextDocumentSelector.ForLanguage("expressif"),
-            TriggerCharacters = new Container<string>("(", ",")
+            TriggerCharacters = new Container<string>("(", ",", "~")
         };
 
     private static bool TryGetOffset(string text, Position position, out int offset)

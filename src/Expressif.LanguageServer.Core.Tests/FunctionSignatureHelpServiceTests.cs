@@ -15,7 +15,8 @@ public sealed class FunctionSignatureHelpServiceTests
             new("first", false, "First value."),
             new("second", false, "Second value."),
             new("third", true, "Third value.")
-        ], "Combines values.", "Test"),
+        ], "Combines values.", "Test",
+            TupleBindingSignatures: [new(true, false, 2, 3)]),
         new("inner", [],
         [
             new("left", false, "Left value."),
@@ -152,6 +153,23 @@ public sealed class FunctionSignatureHelpServiceTests
         var result = service.GetSignatureHelp(Parse(text), cursor);
 
         Assert.That(result, Is.Null);
+    }
+
+    [TestCase("foo~|", "foo~ ← (input, first, second, third?)", "first tuple item")]
+    [TestCase("~foo|", "~foo ← (first, second, third?, input)", "last tuple item")]
+    public void GetSignatureHelp_TupleBindingShorthand_ExplainsDirectionalTuple(
+        string textWithCursor, string signature, string mapping)
+    {
+        var (text, cursor) = RemoveCursor(textWithCursor);
+
+        var result = service.GetSignatureHelp(Parse(text), cursor);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result?.Signature, Is.EqualTo(signature));
+            Assert.That(result?.Description, Does.Contain(mapping));
+            Assert.That(result?.ActiveParameter, Is.Null);
+        });
     }
 
     private Expressif.Syntax.RootExpressionSyntax Parse(string text)

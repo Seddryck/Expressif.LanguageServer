@@ -1,6 +1,7 @@
 using Expressif.LanguageServer.Core.Diagnostics;
 using Expressif.LanguageServer.Core.Functions;
 using Expressif.LanguageServer.Core.Syntax;
+using Expressif.Functions;
 using NUnit.Framework;
 
 namespace Expressif.LanguageServer.Core.Tests;
@@ -176,6 +177,119 @@ public sealed class FunctionCallDiagnosticServiceTests
         Assert.That(service.GetDiagnostics(Parse(source)), Has.Count.EqualTo(count));
     }
 
+    [TestCase("T(1, 2) | missing~", "missing")]
+    [TestCase("T(1, 2) | ~missing", "missing")]
+    [TestCase("apply(@_ | input :> T(1, 2) | missing~)", "missing")]
+    public void GetDiagnostics_UnknownTupleBindingTarget_ReportsCallableName(
+        string source, string target)
+    {
+        var diagnostic = new FunctionCallDiagnosticService(new ExpressifFunctionCatalog())
+            .GetDiagnostics(Parse(source))
+            .Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Message, Is.EqualTo($"Unknown tuple-binding target '{target}'."));
+            Assert.That(diagnostic.Start, Is.EqualTo(source.IndexOf(target, StringComparison.Ordinal)));
+            Assert.That(diagnostic.Length, Is.EqualTo(target.Length));
+        });
+    }
+
+    [TestCase("T(1, 2) | map~", "map")]
+    [TestCase("T(1, 2) | ~map", "map")]
+    public void GetDiagnostics_IneligibleTupleBindingTarget_ReportsCallableName(
+        string source, string target)
+    {
+        var diagnostic = new FunctionCallDiagnosticService(new ExpressifFunctionCatalog())
+            .GetDiagnostics(Parse(source))
+            .Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Message, Is.EqualTo($"Callable '{target}' does not support tuple binding."));
+            Assert.That(diagnostic.Start, Is.EqualTo(source.IndexOf(target, StringComparison.Ordinal)));
+            Assert.That(diagnostic.Length, Is.EqualTo(target.Length));
+        });
+    }
+
+    [TestCase("tuple(1) | subtract~", "subtract")]
+    [TestCase("tuple(1) | ~subtract", "subtract")]
+    [TestCase("tuple(1) | bind(\"subtract\")", "subtract")]
+    public void GetDiagnostics_StaticallyKnownInvalidTupleArity_UsesNormalizedBinding(
+        string source, string target)
+    {
+        var diagnostic = new FunctionCallDiagnosticService(new ExpressifFunctionCatalog())
+            .GetDiagnostics(Parse(source))
+            .Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Message, Does.Contain("Invalid tuple invocation"));
+            Assert.That(diagnostic.Start, Is.EqualTo(source.IndexOf(target, StringComparison.Ordinal)));
+            Assert.That(diagnostic.Length, Is.EqualTo(target.Length));
+        });
+    }
+
+    [TestCase("@values | subtract~")]
+    [TestCase("@values | ~subtract")]
+    [TestCase("@values | bind(\"subtract\")")]
+    public void GetDiagnostics_UnknownTupleShape_DoesNotRejectEligibleTarget(string source)
+    {
+        var diagnostics = new FunctionCallDiagnosticService(new ExpressifFunctionCatalog())
+            .GetDiagnostics(Parse(source));
+
+        Assert.That(diagnostics, Is.Empty);
+    }
+
+    [TestCase("T(\"abc\", \"a\") | starts-with~")]
+    [TestCase("T(10, 2) | subtract~")]
+    [TestCase("T(10, 2, 3) | subtract~")]
+    [TestCase("T(1, 2, 3, 4) | tuple~")]
+    [TestCase("T(10, 2) | bind(\"subtract\")")]
+    public void GetDiagnostics_EligiblePredicateOptionalVariadicAndExplicitBindings_AreAccepted(
+        string source)
+    {
+        var diagnostics = new FunctionCallDiagnosticService(new ExpressifFunctionCatalog())
+            .GetDiagnostics(Parse(source));
+
+        Assert.That(diagnostics, Is.Empty);
+    }
+
+    [Test]
+    public void GetDiagnostics_StaticallyKnownIncompatibleTupleValue_ReportsCallableName()
+    {
+        const string source = "T(1, \"bad\") | subtract~";
+
+        var diagnostic = new FunctionCallDiagnosticService(new ExpressifFunctionCatalog())
+            .GetDiagnostics(Parse(source))
+            .Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Message, Does.Contain("incompatible"));
+            Assert.That(diagnostic.Start, Is.EqualTo(source.IndexOf("subtract", StringComparison.Ordinal)));
+            Assert.That(diagnostic.Length, Is.EqualTo("subtract".Length));
+        });
+    }
+
+    [Test]
+    public void GetDiagnostics_CustomEligibleCallable_UsesCatalogImplementationMetadata()
+    {
+        var signatures = TupleBindingCapabilities.Describe(typeof(CustomTupleCallable))
+            .Select(signature => new TupleBindingSignatureMetadata(
+                signature.SupportsTupleBinding,
+                signature.Variadic,
+                signature.MinimumArguments,
+                signature.MaximumArguments))
+            .ToArray();
+        var service = CreateService(new FunctionMetadata(
+            "custom", [], [new("value", false, "Value.")], "Custom.", "Test",
+            ImplementationType: typeof(CustomTupleCallable),
+            TupleBindingSignatures: signatures));
+
+        Assert.That(service.GetDiagnostics(Parse("T(1, 2) | custom~")), Is.Empty);
+    }
+
     private static FunctionCallDiagnosticService CreateService(params FunctionMetadata[] functions)
         => new(new TestFunctionCatalog(functions));
 
@@ -189,5 +303,11 @@ public sealed class FunctionCallDiagnosticServiceTests
     private sealed class TestFunctionCatalog(IReadOnlyList<FunctionMetadata> functions) : IFunctionCatalog
     {
         public IReadOnlyList<FunctionMetadata> Functions { get; } = functions;
+    }
+
+    private sealed class CustomTupleCallable(Func<int> value) : IFunction<int, int>
+    {
+        public int Evaluate(int input) => input + value();
+        object? IFunction.Evaluate(object? value) => Evaluate((int)value!);
     }
 }

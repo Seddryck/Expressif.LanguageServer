@@ -1,4 +1,5 @@
 using Expressif.LanguageServer.Core.Functions;
+using Expressif.LanguageServer.Core.Syntax;
 using Expressif.Syntax;
 
 namespace Expressif.LanguageServer.Core.SignatureHelp;
@@ -17,7 +18,7 @@ public sealed class FunctionSignatureHelpService(IFunctionCatalog functions) : I
             .OrderBy(function => function.Span.Length)
             .FirstOrDefault();
         if (call is null)
-            return null;
+            return GetTupleBindingSignatureHelp(syntaxTree, cursorOffset);
 
         var metadata = functions.Functions.FirstOrDefault(function =>
             function.Name.Equals(call.Name, StringComparison.OrdinalIgnoreCase) ||
@@ -40,6 +41,46 @@ public sealed class FunctionSignatureHelpService(IFunctionCatalog functions) : I
             metadata.Description,
             parameters,
             activeParameter);
+    }
+
+    private FunctionSignatureHelp? GetTupleBindingSignatureHelp(
+        RootExpressionSyntax syntaxTree,
+        int cursorOffset)
+    {
+        var shorthand = CallableSyntaxReference.DescendantsOf(syntaxTree)
+            .Where(reference => reference.TupleBindingDirection is not null &&
+                                cursorOffset >= reference.Span.Start &&
+                                cursorOffset <= reference.Span.End)
+            .OrderBy(reference => reference.Span.Length)
+            .FirstOrDefault();
+        if (shorthand is null)
+            return null;
+
+        var metadata = functions.Functions.FirstOrDefault(function =>
+            function.Name.Equals(shorthand.Name, StringComparison.OrdinalIgnoreCase) ||
+            function.Aliases.Contains(shorthand.Name, StringComparer.OrdinalIgnoreCase));
+        if (metadata is null)
+            return null;
+
+        var parameters = metadata.Parameters
+            .Select(parameter => new SignatureParameter(parameter.Label, parameter.Description))
+            .ToArray();
+        var explicitArguments = parameters.Select(parameter => parameter.Label).ToArray();
+        var tupleItems = shorthand.TupleBindingDirection == TupleBindingDirection.Postfix
+            ? new[] { "input" }.Concat(explicitArguments)
+            : explicitArguments.Concat(["input"]);
+        var renderedName = shorthand.TupleBindingDirection == TupleBindingDirection.Postfix
+            ? $"{shorthand.Name}~"
+            : $"~{shorthand.Name}";
+        var mapping = shorthand.TupleBindingDirection == TupleBindingDirection.Postfix
+            ? "The first tuple item supplies pipeline input; remaining items supply explicit arguments in order."
+            : "The last tuple item supplies pipeline input; preceding items supply explicit arguments in their original order.";
+
+        return new FunctionSignatureHelp(
+            $"{renderedName} ← ({string.Join(", ", tupleItems)})",
+            $"{metadata.Description}\n\n{mapping}",
+            parameters,
+            null);
     }
 
     private static int GetActiveParameter(

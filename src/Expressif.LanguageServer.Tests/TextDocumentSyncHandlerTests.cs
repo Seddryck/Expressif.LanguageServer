@@ -219,6 +219,36 @@ public sealed class TextDocumentSyncHandlerTests
     }
 
     [Test]
+    public async Task Open_InvalidTupleBinding_PublishesCallableRangeAsync()
+    {
+        const string source = "T(1, 2) |\n missing~";
+        handler = new(new DocumentStore(new SyntaxService()),
+            new FunctionCallDiagnosticService(new ExpressifFunctionCatalog()), lifecycleDiagnostics.Object,
+            Mock.Of<ILanguageServerFacade>(facade => facade.TextDocument == textDocument.Object),
+            new LegacyTupleReferenceService());
+
+        await handler.Handle(new DidOpenTextDocumentParams
+        {
+            TextDocument = new TextDocumentItem
+            {
+                Uri = DocumentUri,
+                LanguageId = "expressif",
+                Version = 1,
+                Text = source
+            }
+        }, CancellationToken.None);
+
+        var diagnostic = PublishedDiagnostics().Single().Diagnostics.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Message, Is.EqualTo("Unknown tuple-binding target 'missing'."));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.Range, Is.EqualTo(
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(1, 1, 1, 8)));
+        });
+    }
+
+    [Test]
     public async Task Open_ImplicitBinding_PublishesWarningWithStableCodeAndDeprecatedTagAsync()
     {
         const string source = "{1, 2, 5} | adjacent(subtract)";

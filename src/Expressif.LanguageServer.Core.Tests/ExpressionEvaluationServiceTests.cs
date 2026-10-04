@@ -151,6 +151,37 @@ public sealed class ExpressionEvaluationServiceTests
     }
 
     [Test]
+    public void EvaluateMany_JsonFiles_PreservesEachRootAsOneArrayElement()
+    {
+        var result = service.EvaluateMany(
+            "count",
+            ["[1,2]", "{\"name\":\"Ada\"}"],
+            EvaluationInputFormat.JsonFiles);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Value, Is.EqualTo("2"));
+            Assert.That(result.Error, Is.Null);
+        });
+    }
+
+    [Test]
+    public void EvaluateMany_InvalidJsonFile_IdentifiesItsSelectionPosition()
+    {
+        var result = service.EvaluateMany(
+            "count",
+            ["{}", "{"],
+            EvaluationInputFormat.JsonFiles);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Error, Does.StartWith("Invalid JSON in selected file 2:"));
+        });
+    }
+
+    [Test]
     public void Evaluate_CsvInput_ConvertsRowsToRecords()
     {
         var result = service.Evaluate(

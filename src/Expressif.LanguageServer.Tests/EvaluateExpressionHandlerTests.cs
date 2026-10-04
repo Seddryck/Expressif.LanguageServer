@@ -31,7 +31,7 @@ public sealed class EvaluateExpressionHandlerTests
 
         var result = await handler.Handle(
             "add(2)",
-            "40",
+            ["40"],
             EvaluationInputFormat.Json,
             EvaluationOutputFormat.Json,
             CancellationToken.None);
@@ -43,5 +43,39 @@ public sealed class EvaluateExpressionHandlerTests
             EvaluationInputFormat.Json,
             EvaluationOutputFormat.Json,
             new EvaluationOutputOptions(EvaluationOutputFormatting.Pretty, 4)), Times.Once);
+    }
+
+    [Test]
+    public async Task Handle_MultipleJsonFiles_DelegatesAllDocumentsToEvaluationServiceAsync()
+    {
+        var inputs = new[] { "[1,2]", "{\"name\":\"Ada\"}" };
+        var expected = ExpressionEvaluationResult.Success("2");
+        var evaluation = new Mock<IExpressionEvaluationService>();
+        evaluation.Setup(service => service.EvaluateMany(
+            "count",
+            inputs,
+            EvaluationInputFormat.JsonFiles,
+            EvaluationOutputFormat.Expressif,
+            new EvaluationOutputOptions(EvaluationOutputFormatting.Compact, 2))).Returns(expected);
+        var configuration = new Mock<ILanguageServerConfiguration>();
+        var handler = new EvaluateExpressionHandler(
+            evaluation.Object,
+            configuration.Object,
+            Mock.Of<ISerializer>());
+
+        var result = await handler.Handle(
+            "count",
+            inputs,
+            EvaluationInputFormat.JsonFiles,
+            EvaluationOutputFormat.Expressif,
+            CancellationToken.None);
+
+        Assert.That(result, Is.SameAs(expected));
+        evaluation.Verify(service => service.EvaluateMany(
+            "count",
+            inputs,
+            EvaluationInputFormat.JsonFiles,
+            EvaluationOutputFormat.Expressif,
+            new EvaluationOutputOptions(EvaluationOutputFormatting.Compact, 2)), Times.Once);
     }
 }

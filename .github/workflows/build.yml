@@ -122,19 +122,42 @@ jobs:
       release-eligible: ${{ steps.version.outputs.release-eligible }}
 
   release:
-    name: GitHub Release
+    name: Publish release
     needs: build-test-publish
     if: needs.build-test-publish.outputs.release-eligible == 'true'
     runs-on: windows-latest
     permissions:
       contents: write
+      id-token: write
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install VS Code extension dependencies
+        run: npm ci --prefix vscode-extension
+
       - name: Download release candidate
         uses: actions/download-artifact@v7
         with:
           name: release-candidate
           path: artifacts
+
+      - name: Publish VS Code extension
+        shell: pwsh
+        working-directory: vscode-extension
+        env:
+          VERSION: ${{ needs.build-test-publish.outputs.version }}
+        run: npx vsce publish --oidc --packagePath "../artifacts/Expressif-LanguageSupport-$env:VERSION-win-x64.vsix"
 
       - name: Tag and publish GitHub Release
         shell: pwsh

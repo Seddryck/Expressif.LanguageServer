@@ -61,33 +61,40 @@ The recommended way to use Expressif.LanguageServer today is through the **Expre
 
 Download the `.vsix` package from the [latest GitHub release](https://github.com/Seddryck/Expressif.LanguageServer/releases/latest), then install it from **Extensions → … → Install from VSIX…**.
 
+Choose the VSIX matching your platform:
+
+| Platform | VSIX target |
+| --- | --- |
+| Windows x64 | `win32-x64` |
+| Linux x64 | `linux-x64` |
+| macOS Apple Silicon | `darwin-arm64` |
+
 It can also be installed from the command line:
 
 ```powershell
-code --install-extension .\Expressif-LanguageSupport-<version>-win-x64.vsix
+code --install-extension ./Expressif-LanguageSupport-<version>-<target>.vsix
 ```
 
 The packaged extension contains a self-contained language server. A separate .NET installation or language-server installation is therefore not required.
-
-> GitHub releases currently provide Windows x64 packages.
 
 ### Standalone language server
 
 A standalone self-contained server is also available from the [GitHub releases](https://github.com/Seddryck/Expressif.LanguageServer/releases).
 
-Download and extract:
+Download the archive matching your platform:
 
 ```text
 Expressif-LanguageServer-<version>-net10.0-win-x64.zip
+Expressif-LanguageServer-<version>-net10.0-linux-x64.tar.gz
+Expressif-LanguageServer-<version>-net10.0-osx-arm64.tar.gz
 ```
 
-Then configure an LSP-compatible editor or client to launch:
+Then configure an LSP-compatible editor or client to launch `Expressif-LanguageServer.exe`
+on Windows or `Expressif-LanguageServer` on Linux and macOS. The process communicates using
+the Language Server Protocol over standard input and output; it is not an interactive command-line
+application.
 
-```text
-Expressif-LanguageServer.exe
-```
-
-The process communicates using the Language Server Protocol over standard input and output; it is not an interactive command-line application.
+The Linux package targets glibc-based x64 distributions. The macOS package targets Apple Silicon.
 
 ## Using Visual Studio Code
 

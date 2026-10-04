@@ -13,9 +13,9 @@ permissions:
   contents: read
 
 jobs:
-  build-test-publish:
-    name: .NET 10 / win-x64
-    runs-on: windows-latest
+  prepare:
+    name: Prepare build
+    runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
@@ -28,13 +28,6 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: vscode-extension/package-lock.json
 
       - name: Install GitVersion
         shell: pwsh
@@ -56,20 +49,72 @@ jobs:
           }
           "release-eligible=$($releaseEligible.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
+    outputs:
+      version: ${{ steps.version.outputs.semver }}
+      release-eligible: ${{ steps.version.outputs.release-eligible }}
+
+  build-test-publish:
+    name: .NET 10 / ${{ matrix.rid }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            rid: win-x64
+            vscode_target: win32-x64
+            archive_suffix: zip
+          - runner: ubuntu-latest
+            rid: linux-x64
+            vscode_target: linux-x64
+            archive_suffix: tar.gz
+          - runner: macos-latest
+            rid: osx-arm64
+            vscode_target: darwin-arm64
+            archive_suffix: tar.gz
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vscode-extension/package-lock.json
+
       - name: Propagate version to VS Code extension
-        run: npm version ${{ steps.version.outputs.semver }} --prefix vscode-extension --no-git-tag-version --allow-same-version
+        run: npm version ${{ needs.prepare.outputs.version }} --prefix vscode-extension --no-git-tag-version --allow-same-version
 
       - name: Restore
-        run: dotnet restore Expressif.LanguageServer.sln -r win-x64
+        run: dotnet restore Expressif.LanguageServer.sln -r ${{ matrix.rid }}
 
       - name: Build
-        run: dotnet build src/Expressif.LanguageServer/Expressif.LanguageServer.csproj --configuration Release --framework net10.0 --runtime win-x64 --no-restore --nologo -p:Version=${{ steps.version.outputs.semver }}
+        run: dotnet build src/Expressif.LanguageServer/Expressif.LanguageServer.csproj --configuration Release --framework net10.0 --runtime ${{ matrix.rid }} --no-restore --nologo -p:Version=${{ needs.prepare.outputs.version }}
 
       - name: Test core services
-        run: dotnet test src/Expressif.LanguageServer.Core.Tests/Expressif.LanguageServer.Core.Tests.csproj --configuration Release --framework net10.0 --runtime win-x64 --no-restore --nologo
+        run: dotnet test src/Expressif.LanguageServer.Core.Tests/Expressif.LanguageServer.Core.Tests.csproj --configuration Release --framework net10.0 --runtime ${{ matrix.rid }} --no-restore --nologo
 
       - name: Publish self-contained application
-        run: dotnet publish src/Expressif.LanguageServer/Expressif.LanguageServer.csproj --configuration Release --framework net10.0 --runtime win-x64 --self-contained true --no-restore --nologo -p:Version=${{ steps.version.outputs.semver }} --output artifacts/publish
+        run: dotnet publish src/Expressif.LanguageServer/Expressif.LanguageServer.csproj --configuration Release --framework net10.0 --runtime ${{ matrix.rid }} --self-contained true --no-restore --nologo -p:Version=${{ needs.prepare.outputs.version }} --output artifacts/publish
+
+      - name: Preserve server executable permission
+        if: runner.os != 'Windows'
+        shell: pwsh
+        run: |
+          chmod +x artifacts/publish/Expressif-LanguageServer
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Install VS Code extension dependencies
         run: npm ci --prefix vscode-extension
@@ -77,7 +122,7 @@ jobs:
       - name: Package VS Code extension
         shell: pwsh
         run: |
-          $server = 'vscode-extension/server/win-x64'
+          $server = 'vscode-extension/server/${{ matrix.rid }}'
           New-Item -ItemType Directory -Force -Path $server | Out-Null
           Copy-Item -Path 'artifacts/publish/*' -Destination $server -Recurse -Force
 
@@ -86,7 +131,7 @@ jobs:
 
           Push-Location vscode-extension
           try {
-            npx vsce package --out "../artifacts/Expressif-LanguageSupport-$env:VERSION-win-x64.vsix"
+            npx vsce package --target '${{ matrix.vscode_target }}' --out "../artifacts/Expressif-LanguageSupport-$env:VERSION-${{ matrix.vscode_target }}.vsix"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           finally {
@@ -96,36 +141,40 @@ jobs:
       - name: Create release archive
         shell: pwsh
         run: |
-          $archive = "artifacts/Expressif-LanguageServer-$env:VERSION-net10.0-win-x64.zip"
-          Compress-Archive -Path 'artifacts/publish/*' -DestinationPath $archive
+          $archive = "artifacts/Expressif-LanguageServer-$env:VERSION-net10.0-${{ matrix.rid }}.${{ matrix.archive_suffix }}"
+          if ('${{ matrix.archive_suffix }}' -eq 'zip') {
+            Compress-Archive -Path 'artifacts/publish/*' -DestinationPath $archive
+          }
+          else {
+            tar -czf $archive -C artifacts/publish .
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Upload VS Code extension package
         uses: actions/upload-artifact@v7
         with:
-          name: vscode-extension-${{ steps.version.outputs.semver }}-win-x64
-          path: artifacts/Expressif-LanguageSupport-${{ steps.version.outputs.semver }}-win-x64.vsix
+          name: vscode-extension-${{ needs.prepare.outputs.version }}-${{ matrix.vscode_target }}
+          path: artifacts/Expressif-LanguageSupport-${{ needs.prepare.outputs.version }}-${{ matrix.vscode_target }}.vsix
           if-no-files-found: error
 
       - name: Upload release candidate
-        if: steps.version.outputs.release-eligible == 'true'
+        if: needs.prepare.outputs.release-eligible == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: release-candidate
+          name: release-candidate-${{ matrix.rid }}
           path: |
-            artifacts/Expressif-LanguageServer-${{ steps.version.outputs.semver }}-net10.0-win-x64.zip
-            artifacts/Expressif-LanguageSupport-${{ steps.version.outputs.semver }}-win-x64.vsix
+            artifacts/Expressif-LanguageServer-${{ needs.prepare.outputs.version }}-net10.0-${{ matrix.rid }}.${{ matrix.archive_suffix }}
+            artifacts/Expressif-LanguageSupport-${{ needs.prepare.outputs.version }}-${{ matrix.vscode_target }}.vsix
           if-no-files-found: error
           retention-days: 1
 
-    outputs:
-      version: ${{ steps.version.outputs.semver }}
-      release-eligible: ${{ steps.version.outputs.release-eligible }}
-
   release:
     name: GitHub Release
-    needs: build-test-publish
-    if: needs.build-test-publish.outputs.release-eligible == 'true'
-    runs-on: windows-latest
+    needs:
+      - prepare
+      - build-test-publish
+    if: needs.prepare.outputs.release-eligible == 'true'
+    runs-on: ubuntu-latest
     permissions:
       contents: write
 
@@ -133,16 +182,19 @@ jobs:
       - name: Download release candidate
         uses: actions/download-artifact@v7
         with:
-          name: release-candidate
+          pattern: release-candidate-*
+          merge-multiple: true
           path: artifacts
 
       - name: Tag and publish GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.build-test-publish.outputs.version }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           $tag = "v$env:VERSION"
-          $archive = "artifacts/Expressif-LanguageServer-$env:VERSION-net10.0-win-x64.zip"
-          $extension = "artifacts/Expressif-LanguageSupport-$env:VERSION-win-x64.vsix"
-          gh release create $tag $archive $extension --repo '${{ github.repository }}' --target '${{ github.sha }}' --title $tag --generate-notes
+          $assets = @(Get-ChildItem -LiteralPath artifacts -File | Sort-Object Name | ForEach-Object FullName)
+          if ($assets.Count -ne 6) {
+            throw "Expected six release assets, found $($assets.Count)."
+          }
+          gh release create $tag @assets --repo '${{ github.repository }}' --target '${{ github.sha }}' --title $tag --generate-notes

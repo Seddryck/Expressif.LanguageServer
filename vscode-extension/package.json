@@ -23,6 +23,8 @@
   ],
   "activationEvents": [
     "onLanguage:expressif",
+    "onCommand:expressif.newFile",
+    "onCommand:expressif.formatDocument",
     "onCommand:expressif.runExpression",
     "onCommand:expressif.runExpressionWithPreviousSelections"
   ],
@@ -39,6 +41,18 @@
   "contributes": {
     "commands": [
       {
+        "command": "expressif.newFile",
+        "title": "New Expressif File",
+        "shortTitle": "Expressif File",
+        "category": "Expressif",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "expressif.formatDocument",
+        "title": "Format Document",
+        "category": "Expressif"
+      },
+      {
         "command": "expressif.runExpression",
         "title": "Run Expression",
         "category": "Expressif",
@@ -51,11 +65,24 @@
       }
     ],
     "menus": {
+      "file/newFile": [
+        {
+          "command": "expressif.newFile",
+          "group": "file"
+        }
+      ],
       "editor/title": [
         {
           "command": "expressif.runExpression",
           "when": "editorLangId == expressif",
           "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "expressif.formatDocument",
+          "when": "resourceExtname == .expressif || resourceExtname == .expr",
+          "group": "4_workspace"
         }
       ],
       "editor/context": [

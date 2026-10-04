@@ -26,6 +26,108 @@ public sealed class DocumentFormatter : IDocumentFormatter
         return writer.Complete();
     }
 
+    public IReadOnlyList<SourceTextEdit> FormatRange(
+        DocumentSnapshot document,
+        int start,
+        int end,
+        DocumentFormattingOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (start < 0 || end > document.Text.Length || start >= end)
+            return [];
+
+        var syntaxDocument = GetSyntaxDocument(document);
+        if (syntaxDocument is null)
+            return [];
+
+        var layout = Layout.Create(syntaxDocument);
+        var tokens = Tokenize(document.Text, layout).ToArray();
+        if (!IsSafeSelection(tokens, layout, start, end))
+            return [];
+
+        var formatted = Format(document, options);
+        return GetWhitespaceEdits(document.Text, formatted)
+            .Where(edit => edit.Length > 0
+                ? edit.Start >= start && edit.Start + edit.Length <= end
+                : edit.Start > start && edit.Start < end)
+            .ToArray();
+    }
+
+    private static bool IsSafeSelection(
+        IReadOnlyList<FormatToken> tokens,
+        Layout layout,
+        int start,
+        int end)
+    {
+        if (tokens.Any(token => IsInside(start, token) || IsInside(end, token)))
+            return false;
+
+        if (layout.ProtectedByStart.Values.Any(span =>
+                start > span.Start && start < span.End || end > span.Start && end < span.End))
+            return false;
+
+        var selectedTokens = tokens.Where(token => token.Start >= start && token.End <= end).ToArray();
+        var delimiterDepth = 0;
+        foreach (var token in selectedTokens)
+        {
+            if (token.Kind == TokenKind.OpenDelimiter)
+                delimiterDepth++;
+            else if (token.Kind == TokenKind.CloseDelimiter && --delimiterDepth < 0)
+                return false;
+        }
+
+        if (delimiterDepth != 0)
+            return false;
+
+        var first = selectedTokens.FirstOrDefault(token => token.Kind != TokenKind.LineComment &&
+                                                           token.Kind != TokenKind.BlockComment);
+        var last = selectedTokens.LastOrDefault(token => token.Kind != TokenKind.LineComment &&
+                                                         token.Kind != TokenKind.BlockComment);
+        if (first?.Kind == TokenKind.Comma ||
+            last?.Kind is TokenKind.Comma or TokenKind.BinaryOperator or TokenKind.UnaryOperator or TokenKind.Pipeline)
+            return false;
+
+        return selectedTokens.Length > 0;
+    }
+
+    private static bool IsInside(int position, FormatToken token)
+        => position > token.Start && position < token.End;
+
+    private static IReadOnlyList<SourceTextEdit> GetWhitespaceEdits(string source, string formatted)
+    {
+        var edits = new List<SourceTextEdit>();
+        var sourcePosition = 0;
+        var formattedPosition = 0;
+        while (sourcePosition < source.Length || formattedPosition < formatted.Length)
+        {
+            var sourceWhitespaceStart = sourcePosition;
+            while (sourcePosition < source.Length && char.IsWhiteSpace(source[sourcePosition]))
+                sourcePosition++;
+
+            var formattedWhitespaceStart = formattedPosition;
+            while (formattedPosition < formatted.Length && char.IsWhiteSpace(formatted[formattedPosition]))
+                formattedPosition++;
+
+            var originalWhitespace = source[sourceWhitespaceStart..sourcePosition];
+            var replacementWhitespace = formatted[formattedWhitespaceStart..formattedPosition];
+            if (originalWhitespace != replacementWhitespace)
+                edits.Add(new SourceTextEdit(sourceWhitespaceStart, originalWhitespace.Length, replacementWhitespace));
+
+            if (sourcePosition == source.Length || formattedPosition == formatted.Length)
+                break;
+
+            if (source[sourcePosition] != formatted[formattedPosition])
+                return [];
+
+            sourcePosition++;
+            formattedPosition++;
+        }
+
+        return sourcePosition == source.Length && formattedPosition == formatted.Length ? edits : [];
+    }
+
     private static SourceFileSyntax? GetSyntaxDocument(DocumentSnapshot document)
     {
         if (document.SyntaxDocument is not null && document.SyntaxErrors.Count == 0)
@@ -486,8 +588,15 @@ public sealed class DocumentFormatter : IDocumentFormatter
         private void MarkContent() => contentEnd = result.Length;
     }
 
-    private sealed record ProtectedSpan(int Start, string Text, TokenKind Kind);
-    private sealed record FormatToken(TokenKind Kind, string Text, int Start, bool LineBreakBefore);
+    private sealed record ProtectedSpan(int Start, string Text, TokenKind Kind)
+    {
+        public int End => Start + Text.Length;
+    }
+
+    private sealed record FormatToken(TokenKind Kind, string Text, int Start, bool LineBreakBefore)
+    {
+        public int End => Start + Text.Length;
+    }
 
     private enum TokenKind
     {

@@ -9,24 +9,23 @@ public sealed class EvaluateExpressionHandler(
     IExpressionEvaluationService evaluation,
     ILanguageServerConfiguration configuration,
     ISerializer serializer)
-    : ExecuteTypedResponseCommandHandlerBase<string, string, EvaluationInputFormat, EvaluationOutputFormat, ExpressionEvaluationResult>(CommandName, serializer)
+    : ExecuteTypedResponseCommandHandlerBase<string, string[], EvaluationInputFormat, EvaluationOutputFormat, ExpressionEvaluationResult>(CommandName, serializer)
 {
     public const string CommandName = "expressif.evaluateExpression";
 
     public override Task<ExpressionEvaluationResult> Handle(
         string expression,
-        string? input,
+        string[]? input,
         EvaluationInputFormat inputFormat,
         EvaluationOutputFormat outputFormat,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(evaluation.Evaluate(
-            expression,
-            input,
-            inputFormat,
-            outputFormat,
-            GetOutputOptions()));
+        var outputOptions = GetOutputOptions();
+        var result = inputFormat == EvaluationInputFormat.JsonFiles
+            ? evaluation.EvaluateMany(expression, input ?? [], inputFormat, outputFormat, outputOptions)
+            : evaluation.Evaluate(expression, input?.FirstOrDefault(), inputFormat, outputFormat, outputOptions);
+        return Task.FromResult(result);
     }
 
     private EvaluationOutputOptions GetOutputOptions()

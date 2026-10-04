@@ -2,6 +2,10 @@
 
 This extension is a thin client for `Expressif.LanguageServer`. It registers `.expressif` files and forwards editor activity to the server over the Language Server Protocol. Parsing and every language feature remain in the server.
 
+Create an untitled Expressif document by choosing **Expressif File** from VS Code's **New File...** picker, or create a file whose name ends in `.expressif` or `.expr`.
+
+Right-click an `.expressif` or `.expr` file in the Explorer and choose **Format Document** to open and format it with the language server. In an open Expressif editor, VS Code's standard **Format Document** command uses the same formatter.
+
 ## Run an expression
 
 Press `Ctrl+Shift+Enter` (`Cmd+Shift+Enter` on macOS), use the play button in the editor title, or run **Expressif: Run Expression** from the Command Palette. The command evaluates the current selection, or the whole document when nothing is selected. Before evaluation, choose whether to use no input, enter a literal, select a JSON or CSV file, use an open JSON/CSV editor or its current selection, or reuse the previous input. Then choose `.expressif` or `.json` for the result representation. To use the active JSON/CSV editor, select the expression once, focus the JSON/CSV editor, and invoke the command from the Command Palette; the extension remembers the most recently active Expressif editor. Results open in a read-only editor beside the Expressif script. Re-running the same script with the same output format refreshes that result editor.

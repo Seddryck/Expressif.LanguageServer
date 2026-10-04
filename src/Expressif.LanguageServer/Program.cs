@@ -4,6 +4,7 @@ using Expressif.LanguageServer.Core.Diagnostics;
 using Expressif.LanguageServer.Core.Documents;
 using Expressif.LanguageServer.Core.Evaluation;
 using Expressif.LanguageServer.Core.Formatting;
+using Expressif.LanguageServer.Core.Folding;
 using Expressif.LanguageServer.Core.Functions;
 using Expressif.LanguageServer.Core.Hover;
 using Expressif.LanguageServer.Core.Scopes;
@@ -46,6 +47,7 @@ public static class Program
                 services.AddSingleton<IImplicitBindingMigrationService, ImplicitBindingMigrationService>();
                 services.AddSingleton<IFunctionCodeActionService, FunctionCodeActionService>();
                 services.AddSingleton<IDocumentFormatter, DocumentFormatter>();
+                services.AddSingleton<IDocumentFoldingService, DocumentFoldingService>();
             })
             .WithHandler<TextDocumentSyncHandler>()
             .WithHandler<CompletionHandler>()
@@ -55,6 +57,8 @@ public static class Program
             .WithHandler<SemanticTokensHandler>()
             .WithHandler<CodeActionHandler>()
             .WithHandler<DocumentFormattingHandler>()
+            .WithHandler<DocumentRangeFormattingHandler>()
+            .WithHandler<FoldingRangeHandler>()
             .WithHandler<EvaluateExpressionHandler>());
 
         await server.WaitForExit;

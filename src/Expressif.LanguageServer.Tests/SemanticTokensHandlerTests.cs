@@ -22,7 +22,8 @@ public sealed class SemanticTokensHandlerTests
                     SemanticTokenType.String,
                     SemanticTokenType.Number,
                     SemanticTokenType.Operator,
-                    SemanticTokenType.Comment
+                    SemanticTokenType.Comment,
+                    SemanticTokenType.Type
                 }));
             Assert.That(SemanticTokensHandler.Legend.TokenModifiers, Is.Empty);
         });

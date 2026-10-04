@@ -22,13 +22,14 @@ let lastDataEditor: vscode.TextEditor | undefined;
 let lastExpressionEditor: vscode.TextEditor | undefined;
 
 interface EvaluationInput {
-  value?: string;
+  values?: string[];
+  fileUris?: readonly vscode.Uri[];
   description: string;
-  format: 'Literal' | 'Json' | 'Csv';
+  format: 'Literal' | 'Json' | 'JsonFiles' | 'Csv';
 }
 
 interface EvaluationInputQuickPickItem extends vscode.QuickPickItem {
-  inputKind: 'none' | 'literal' | 'file' | 'editor' | 'selection' | 'previous';
+  inputKind: 'none' | 'literal' | 'file' | 'files' | 'editor' | 'selection' | 'previous';
 }
 
 interface EvaluationResult {
@@ -77,6 +78,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(client);
   context.subscriptions.push(vscode.commands.registerCommand(
+    'expressif.newFile',
+    createExpressifFile
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand(
+    'expressif.formatDocument',
+    formatExpressifDocument
+  ));
+  context.subscriptions.push(vscode.commands.registerCommand(
     'expressif.runExpression',
     () => runExpression(evaluationResults, false)
   ));
@@ -92,6 +101,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel.show(true);
     throw error;
   }
+}
+
+async function createExpressifFile(): Promise<void> {
+  const document = await vscode.workspace.openTextDocument({ language: 'expressif' });
+  await vscode.window.showTextDocument(document);
+}
+
+async function formatExpressifDocument(resource?: vscode.Uri): Promise<void> {
+  const uri = resource ?? vscode.window.activeTextEditor?.document.uri;
+  if (!uri) {
+    await vscode.window.showErrorMessage('Select an Expressif document to format.');
+    return;
+  }
+
+  const document = await vscode.workspace.openTextDocument(uri);
+  if (document.languageId !== 'expressif') {
+    await vscode.window.showErrorMessage('The selected file is not an Expressif document.');
+    return;
+  }
+
+  await vscode.window.showTextDocument(document, { preview: false });
+  await vscode.commands.executeCommand('editor.action.formatDocument');
 }
 
 async function runExpression(
@@ -137,9 +168,11 @@ async function runExpression(
     }
     lastSelectedOutputFormat = outputFormat;
 
+    const inputValues = await readEvaluationInput(selectedInput);
+
     const result = await client.sendRequest<EvaluationResult>('workspace/executeCommand', {
       command: 'expressif.evaluateExpression',
-      arguments: [expression, selectedInput.value, selectedInput.format, outputFormat]
+      arguments: [expression, inputValues, selectedInput.format, outputFormat]
     });
     if (result.requiresInput) {
       await vscode.window.showErrorMessage(
@@ -152,7 +185,7 @@ async function runExpression(
       return;
     }
 
-    if (selectedInput.value !== undefined) {
+    if (inputValues !== undefined) {
       previousInput = selectedInput;
     }
 
@@ -210,6 +243,7 @@ async function selectEvaluationInput(
     { label: 'No input', inputKind: 'none' },
     { label: 'Enter a literal value', inputKind: 'literal' },
     { label: 'Select a JSON or CSV file', inputKind: 'file' },
+    { label: 'Select multiple JSON files', inputKind: 'files' },
     { label: 'Use the active JSON/CSV editor', inputKind: 'editor' },
     { label: 'Use the current selection', inputKind: 'selection' },
     {
@@ -231,7 +265,7 @@ async function selectEvaluationInput(
 
     switch (choice.inputKind) {
       case 'none':
-        return { value: undefined, description: 'none', format: 'Literal' };
+        return { values: undefined, description: 'none', format: 'Literal' };
       case 'literal': {
         const value = await vscode.window.showInputBox({
           title: 'Run Expressif Expression',
@@ -242,7 +276,7 @@ async function selectEvaluationInput(
         });
         return value === undefined
           ? undefined
-          : { value, description: 'literal', format: 'Literal' };
+          : { values: [value], description: 'literal', format: 'Literal' };
       }
       case 'file': {
         const selected = await vscode.window.showOpenDialog({
@@ -258,16 +292,34 @@ async function selectEvaluationInput(
         }
         const bytes = await vscode.workspace.fs.readFile(selected[0]);
         return {
-          value: new TextDecoder().decode(bytes),
+          values: [new TextDecoder().decode(bytes)],
           description: path.basename(selected[0].fsPath),
           format: inputFormat(selected[0].fsPath)
+        };
+      }
+      case 'files': {
+        const selected = await vscode.window.showOpenDialog({
+          title: 'Select JSON evaluation inputs',
+          canSelectMany: true,
+          canSelectFiles: true,
+          canSelectFolders: false,
+          filters: { JSON: ['json'] },
+          openLabel: 'Use as array input'
+        });
+        if (!selected?.length) {
+          return undefined;
+        }
+        return {
+          fileUris: selected,
+          description: describeJsonFiles(selected),
+          format: 'JsonFiles'
         };
       }
       case 'editor': {
         const dataEditor = findDataEditor(expressionEditor);
         if (dataEditor) {
           return {
-            value: dataEditor.document.getText(),
+            values: [dataEditor.document.getText()],
             description: path.basename(dataEditor.document.fileName),
             format: inputFormatForDocument(dataEditor.document)
           };
@@ -279,7 +331,7 @@ async function selectEvaluationInput(
         const dataEditor = findDataEditor(expressionEditor);
         if (dataEditor && !dataEditor.selection.isEmpty) {
           return {
-            value: dataEditor.document.getText(dataEditor.selection),
+            values: [dataEditor.document.getText(dataEditor.selection)],
             description: `selection from ${path.basename(dataEditor.document.fileName)}`,
             format: inputFormatForDocument(dataEditor.document)
           };
@@ -297,6 +349,27 @@ async function selectEvaluationInput(
         break;
     }
   }
+}
+
+async function readEvaluationInput(input: EvaluationInput): Promise<string[] | undefined> {
+  if (!input.fileUris) {
+    return input.values;
+  }
+
+  return Promise.all(input.fileUris.map(async uri => {
+    try {
+      const bytes = await vscode.workspace.fs.readFile(uri);
+      return new TextDecoder().decode(bytes);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Could not read JSON input "${path.basename(uri.fsPath)}": ${message}`);
+    }
+  }));
+}
+
+function describeJsonFiles(uris: readonly vscode.Uri[]): string {
+  const names = uris.map(uri => path.basename(uri.fsPath));
+  return `${uris.length} JSON ${uris.length === 1 ? 'file' : 'files'}: ${names.join(', ')}`;
 }
 
 function findDataEditor(expressionEditor: vscode.TextEditor): vscode.TextEditor | undefined {

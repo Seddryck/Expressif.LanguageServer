@@ -40,6 +40,9 @@ public sealed class SemanticTokenService : ISemanticTokenService
                 case NumericLiteralSyntax:
                     Add(tokens, node.Span.Start, node.Span.Length, SemanticTokenKind.Number, text.Length);
                     break;
+                case TypeLiteralSyntax:
+                    Add(tokens, node.Span.Start, node.Span.Length, SemanticTokenKind.Type, text.Length);
+                    break;
                 case CommentSyntax:
                     Add(tokens, node.Span.Start, node.Span.Length, SemanticTokenKind.Comment, text.Length);
                     break;
@@ -149,7 +152,7 @@ public sealed class SemanticTokenService : ISemanticTokenService
     {
         yield return node;
         foreach (var child in node.Children)
-        foreach (var descendant in DescendantsAndSelf(child))
-            yield return descendant;
+            foreach (var descendant in DescendantsAndSelf(child))
+                yield return descendant;
     }
 }

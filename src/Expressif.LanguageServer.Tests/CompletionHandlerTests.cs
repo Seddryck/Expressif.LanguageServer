@@ -124,6 +124,31 @@ public sealed class CompletionHandlerTests
         });
     }
 
+    [Test]
+    public async Task Handle_TypeSuggestion_UsesTypeCompletionMetadataAsync()
+    {
+        const string source = ".progression -> :nume";
+        var (documents, uri) = CreateDocument(source);
+        var completions = new Mock<ICompletionService>();
+        completions.Setup(service => service.GetCompletions(source, source.Length))
+            .Returns([new CompletionSuggestion(
+                "numeric", "numeric", true, 17, 4, "The numeric type.",
+                Kind: CompletionSuggestionKind.Type)]);
+
+        var item = (await new CompletionHandler(documents, completions.Object).Handle(new CompletionParams
+        {
+            TextDocument = new TextDocumentIdentifier { Uri = uri },
+            Position = new Position(0, source.Length)
+        }, CancellationToken.None)).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(item.Kind, Is.EqualTo(CompletionItemKind.TypeParameter));
+            Assert.That(item.Detail, Is.EqualTo("Expressif type"));
+            Assert.That(item.TextEdit?.TextEdit?.NewText, Is.EqualTo("numeric"));
+        });
+    }
+
     private static (DocumentStore Documents, DocumentUri Uri) CreateDocument(string text)
     {
         var syntax = new Mock<ISyntaxService>();

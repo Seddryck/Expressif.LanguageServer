@@ -7,7 +7,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 namespace Expressif.LanguageServer.Handlers;
 
 /// <summary>
-/// Provides the stable Expressif legend: variable, function, property, string, number, operator, comment.
+/// Provides the stable Expressif legend: variable, function, property, string, number, operator, comment, type.
 /// </summary>
 public sealed class SemanticTokensHandler(
     IDocumentStore documents,
@@ -22,7 +22,8 @@ public sealed class SemanticTokensHandler(
             SemanticTokenType.String,
             SemanticTokenType.Number,
             SemanticTokenType.Operator,
-            SemanticTokenType.Comment),
+            SemanticTokenType.Comment,
+            SemanticTokenType.Type),
         TokenModifiers = new Container<SemanticTokenModifier>()
     };
 
@@ -111,6 +112,7 @@ public sealed class SemanticTokensHandler(
         SemanticTokenKind.Number => SemanticTokenType.Number,
         SemanticTokenKind.Operator => SemanticTokenType.Operator,
         SemanticTokenKind.Comment => SemanticTokenType.Comment,
+        SemanticTokenKind.Type => SemanticTokenType.Type,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 }

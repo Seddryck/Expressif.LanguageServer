@@ -51,6 +51,21 @@ public sealed class SyntaxServiceTests
     }
 
     [Test]
+    public void Parse_NullPropagatingPipeline_ReturnsSyntaxTreeWithOriginalOffsets()
+    {
+        const string text = "@items\n|#> sort";
+
+        var result = service.Parse(text);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsValid, Is.True);
+            Assert.That(result.SyntaxTree!.Span.Length, Is.EqualTo(text.Length));
+            Assert.That(result.Errors, Is.Empty);
+        });
+    }
+
+    [Test]
     public void Parse_InvalidExpression_ReturnsSyntaxErrors()
     {
         var result = service.Parse("upper(");
